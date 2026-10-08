@@ -1,245 +1,409 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { AUTHORS, INFLUENCES, authorById, worksByAuthor, type Author } from "@shared/canon"
-import { checkInfluence, recordAnswer, treeQuestions } from "@shared/games"
+import { ArrowLeft, Info, Maximize2, Minimize2, RotateCcw, TreePine, X, ZoomIn, ZoomOut } from "lucide-react"
+import {
+  CANON_AUTHORS,
+  ERAS,
+  allDescendantsOf,
+  ancestralChainOf,
+  findCanonAuthor,
+  formatYear,
+  type CanonAuthor,
+} from "@shared/literary-canon"
+import { worksByAuthor } from "@shared/canon"
+import { authorBustDataUri } from "@/lib/author-bust"
 import { LiteraryTabs } from "@/components/LiteraryTabs"
-import { loadGameProgress, saveGameProgress } from "@/lib/game-store"
 import { Button } from "@/components/ui/button"
 
-const BORN: Record<string, number> = {
-  homer: -750,
-  aeschylus: -525,
-  sophocles: -496,
-  virgil: -70,
-  seneca: -4,
-  dante: 1265,
-  petrarch: 1304,
-  boccaccio: 1313,
-  cervantes: 1547,
-  shakespeare: 1564,
-  milton: 1608,
-  rousseau: 1712,
-  goethe: 1749,
-  austen: 1775,
-  shelley: 1797,
-  gogol: 1809,
-  poe: 1809,
-  dickens: 1812,
-  dostoevsky: 1821,
-  baudelaire: 1821,
-  tolstoy: 1828,
-  machado: 1839,
-  "perez-bonalde": 1846,
-  kafka: 1883,
-}
+const NODE_RADIUS = 22
+const LEAF_SLOT = 86
+const MARGIN_X = 60
+const MARGIN_Y = 70
+const ROW = NODE_RADIUS * 2 + 28
+const INITIAL_ZOOM = 0.65
 
-const COL_W = 210
-const PAD_X = 96
-const PAD_Y = 56
+type LayoutNode = { author: CanonAuthor; x: number; y: number }
 
-function columnsFor(px: number): number {
-  if (px < 560) return 2
-  if (px < 980) return 3
-  return 4
-}
+function buildLayout(authors: CanonAuthor[]): { nodes: Map<string, LayoutNode>; width: number; height: number } {
+  const sorted = [...authors].sort((a, b) => a.bornYear - b.bornYear)
+  const yearList = sorted.map((author) => author.bornYear)
+  const childrenOf = new Map<string | null, CanonAuthor[]>()
+  for (const author of authors) {
+    const key = author.mainParent ?? null
+    const list = childrenOf.get(key) ?? []
+    list.push(author)
+    childrenOf.set(key, list)
+  }
+  for (const list of childrenOf.values()) list.sort((a, b) => a.bornYear - b.bornYear)
 
-function monogram(name: string): string {
-  const skip = new Set(["de", "von", "of", "the"])
-  const parts = name.split(" ").filter((part) => part && !skip.has(part.toLowerCase()))
-  if (parts.length <= 1) return (parts[0] ?? name).slice(0, 2)
-  return `${parts[0]?.[0] ?? ""}${parts.at(-1)?.[0] ?? ""}`
-}
+  const nodes = new Map<string, LayoutNode>()
+  const bottomPad = 120
+  const height = MARGIN_Y + sorted.length * ROW + bottomPad
 
-function nameLines(name: string): string[] {
-  if (name.length <= 14) return [name]
-  const words = name.split(" ")
-  if (words.length === 1) return [name]
-  const mid = Math.ceil(words.length / 2)
-  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")]
+  function yFor(year: number): number {
+    const row = yearList.indexOf(year)
+    return height - bottomPad - row * ROW
+  }
+
+  function subtreeWidth(id: string | null): number {
+    const children = childrenOf.get(id) ?? []
+    if (children.length === 0) return LEAF_SLOT
+    return children.reduce((sum, child) => sum + subtreeWidth(child.id), 0)
+  }
+
+  function place(id: string | null, left: number): number {
+    const children = childrenOf.get(id) ?? []
+    if (children.length === 0) return LEAF_SLOT
+    let cursor = left
+    for (const child of children) {
+      const width = subtreeWidth(child.id)
+      nodes.set(child.id, { author: child, x: cursor + width / 2, y: yFor(child.bornYear) })
+      place(child.id, cursor)
+      cursor += width
+    }
+    return cursor - left
+  }
+
+  let cursor = MARGIN_X
+  for (const root of authors.filter((author) => !author.mainParent)) {
+    const width = subtreeWidth(root.id)
+    nodes.set(root.id, { author: root, x: cursor + width / 2, y: yFor(root.bornYear) })
+    place(root.id, cursor)
+    cursor += width
+  }
+  return { nodes, width: cursor + MARGIN_X, height }
 }
 
 export function TreePage() {
-  const questions = useMemo(() => treeQuestions(), [])
-  const [cursor, setCursor] = useState(0)
-  const [progress, setProgress] = useState(() => loadGameProgress())
-  const [revealed, setRevealed] = useState<{ right: boolean; text: string } | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const boardRef = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState(1)
-  const [cols, setCols] = useState(4)
-  const question = questions[cursor % Math.max(questions.length, 1)]
-  const askedId = question?.subjectId ?? null
-  const people = useMemo(
-    () => [...AUTHORS].sort((a, b) => (BORN[a.id] ?? 3000) - (BORN[b.id] ?? 3000) || a.name.localeCompare(b.name)),
-    [],
-  )
-  const nameSize = 13 / Math.max(fit, 0.45)
-  const rowH = 48 + nameSize * 3.1
-  const positions = useMemo(() => {
-    const map = new Map<string, { author: Author; x: number; y: number }>()
-    people.forEach((author, index) => {
-      const col = index % cols
-      const row = Math.floor(index / cols)
-      map.set(author.id, { author, x: PAD_X + col * COL_W + COL_W / 2, y: PAD_Y + row * rowH + 28 })
-    })
-    return map
-  }, [people, cols, rowH])
-  const rows = Math.ceil(people.length / cols)
-  const width = PAD_X * 2 + cols * COL_W
-  const height = PAD_Y * 2 + rows * rowH
-  const asked = askedId ? authorById(askedId) : undefined
-  const questionEdge = INFLUENCES.find((edge) => `${edge.from}-${edge.to}` === question?.id)
-  const lit = revealed && questionEdge ? new Set([questionEdge.from, questionEdge.to]) : new Set<string>()
-
-  useEffect(() => {
-    const el = boardRef.current
-    if (!el) return
-    const apply = () => {
-      const nextCols = columnsFor(el.clientWidth)
-      const boardW = PAD_X * 2 + nextCols * COL_W
-      setCols(nextCols)
-      setFit(el.clientWidth / boardW)
-    }
-    apply()
-    const observer = new ResizeObserver(apply)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  function answer(guess: string) {
-    if (!question || revealed) return
-    const right = checkInfluence(question.id, guess)
-    const next = { ...progress, tree: recordAnswer(progress.tree, right) }
-    setProgress(next)
-    saveGameProgress(next)
-    const edge = INFLUENCES.find((item) => `${item.from}-${item.to}` === question.id)
-    setRevealed({
-      right,
-      text: right ? `Yes. ${edge?.note ?? ""}` : `Not quite. ${edge?.note ?? ""}`,
-    })
-  }
+  const layout = useMemo(() => buildLayout(CANON_AUTHORS), [])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(INITIAL_ZOOM)
+  const [fullscreen, setFullscreen] = useState(false)
 
   return (
-    <main data-testid="tree" className="mx-auto max-w-6xl px-4 py-6">
-      <LiteraryTabs />
-      <h1 className="font-serif text-4xl">Family tree</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        {INFLUENCES.length} documented links. The gold line appears after you answer. Score {progress.tree.correct} correct, on this device.
-      </p>
-
-      {question ? (
-        <section className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-              Link {(cursor % questions.length) + 1} of {questions.length}
+    <div data-testid="literary-tree" className="-mb-20 flex h-[calc(100dvh-7rem)] flex-col overflow-hidden bg-gradient-to-br from-wine-dark via-wine to-wine-dark md:-mb-8 md:h-[calc(100dvh-3.5rem)]">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gold/30 bg-gradient-to-b from-wine-dark/80 to-transparent px-4 py-3">
+        <LiteraryTabs variant="dark" />
+        <div className="ml-auto flex items-center gap-1">
+          <Button size="icon" variant="quiet" className="size-8 text-cream hover:bg-cream/10" onClick={() => setZoom((value) => Math.min(2, value + 0.15))} aria-label="Zoom in">
+            <ZoomIn className="size-4" />
+          </Button>
+          <Button size="icon" variant="quiet" className="size-8 text-cream hover:bg-cream/10" onClick={() => setZoom((value) => Math.max(0.4, value - 0.15))} aria-label="Zoom out">
+            <ZoomOut className="size-4" />
+          </Button>
+          <Button size="icon" variant="quiet" className="size-8 text-cream hover:bg-cream/10" onClick={() => { setZoom(INITIAL_ZOOM); setSelectedId(null) }} aria-label="Reset">
+            <RotateCcw className="size-4" />
+          </Button>
+          <Button size="sm" variant="quiet" className="h-8 text-cream hover:bg-cream/10" onClick={() => setFullscreen(true)}>
+            <Maximize2 className="size-4" />
+            <span className="hidden sm:inline">Full screen</span>
+          </Button>
+        </div>
+      </div>
+      <div className="relative min-h-0 flex-1">
+        <TreeCanvas layout={layout} selectedId={selectedId} setSelectedId={setSelectedId} zoom={zoom} />
+        <HowTo />
+      </div>
+      <AuthorSheet selectedId={selectedId} setSelectedId={setSelectedId} />
+      {fullscreen ? (
+        <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-wine-dark via-wine to-wine-dark">
+          <div className="flex shrink-0 items-center gap-3 border-b border-gold/30 px-4 py-3">
+            <TreePine className="size-5 text-gold" />
+            <h2 className="font-serif text-base font-bold text-cream sm:text-lg">Family Tree of Literature</h2>
+            <p className="hidden text-[11px] text-cream/60 md:block">
+              {CANON_AUTHORS.length} authors · {CANON_AUTHORS.reduce((sum, author) => sum + author.influencedBy.length, 0)} influences
             </p>
-            <p className="text-sm">
-              Score <span className="font-semibold text-primary">{progress.tree.correct}</span> correct
-            </p>
-          </div>
-          <h2 className="mt-2 font-serif text-2xl">{question.prompt}</h2>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            {[...question.choices].sort((a, b) => a.localeCompare(b)).map((choice) => (
-              <Button key={choice} variant="line" className="h-auto justify-start whitespace-normal py-3 text-left" disabled={Boolean(revealed)} onClick={() => answer(choice)}>
-                {choice}
+            <div className="ml-auto flex items-center gap-1">
+              <Button size="icon" variant="quiet" className="size-8 text-cream" onClick={() => setZoom((value) => Math.min(2, value + 0.15))} aria-label="Zoom in">
+                <ZoomIn className="size-4" />
               </Button>
-            ))}
-          </div>
-          {revealed ? (
-            <div className="mt-4 space-y-3">
-              <p className="text-sm">{revealed.text}</p>
-              <Button
-                onClick={() => {
-                  setRevealed(null)
-                  setCursor((value) => value + 1)
-                }}
-              >
-                Next link
+              <Button size="icon" variant="quiet" className="size-8 text-cream" onClick={() => setZoom((value) => Math.max(0.4, value - 0.15))} aria-label="Zoom out">
+                <ZoomOut className="size-4" />
               </Button>
+              <Button size="sm" variant="quiet" className="h-8 text-cream" onClick={() => setFullscreen(false)}>
+                <Minimize2 className="size-4" /> Exit
+              </Button>
+              <button type="button" className="rounded-full p-2 text-cream" onClick={() => setFullscreen(false)} aria-label="Close">
+                <X className="size-4" />
+              </button>
             </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
-        <div ref={boardRef} className="overflow-hidden rounded-2xl border border-primary/20 bg-wine-dark shadow-elevated">
-          <div className="sticky top-0 z-10 flex gap-2 border-b border-cream/10 bg-wine-dark/90 px-3 py-2">
-            <Button size="sm" variant="gold" onClick={() => setZoom((value) => Math.min(1.6, value + 0.15))}>
-              Zoom in
-            </Button>
-            <Button size="sm" variant="line" onClick={() => setZoom((value) => Math.max(0.6, value - 0.15))}>
-              Zoom out
-            </Button>
-            <Button size="sm" variant="line" onClick={() => setZoom(1)}>
-              Reset
-            </Button>
           </div>
-          <svg width={width * fit * zoom} height={height * fit * zoom} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Literary family tree">
-            <rect width={width} height={height} fill="hsl(350 48% 16%)" />
-            {INFLUENCES.map((edge) => {
-              const from = positions.get(edge.from)
-              const to = positions.get(edge.to)
-              if (!from || !to) return null
-              const hot = revealed != null && questionEdge?.from === edge.from && questionEdge.to === edge.to
-              const midY = (from.y + to.y) / 2
+          <div className="relative min-h-0 flex-1">
+            <TreeCanvas layout={layout} selectedId={selectedId} setSelectedId={setSelectedId} zoom={zoom} fullscreen />
+            <HowTo compact />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function HowTo({ compact = false }: { compact?: boolean }) {
+  const [open, setOpen] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches)
+  return (
+    <aside className="absolute top-3 left-3 z-10 w-[min(18rem,calc(100%-1.5rem))]">
+      <div className="overflow-hidden rounded-lg border border-gold/40 bg-wine-dark/85 shadow-elevated backdrop-blur-md">
+        <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center gap-2 bg-gradient-to-r from-gold/20 to-transparent px-3 py-2 text-left">
+          <Info className="size-3.5 shrink-0 text-gold" />
+          <p className="font-serif text-xs font-semibold text-cream">How to read the tree</p>
+        </button>
+        {open ? (
+          <div className="space-y-1.5 border-t border-gold/30 px-3 py-2.5 text-[11px] leading-relaxed text-cream/85">
+            <p>Time flows from the bottom up. Homer is at the bottom, the latest authors at the top.</p>
+            <p>Each branch links an author to their main master. Dashed gold marks a secondary influence.</p>
+            {compact ? <p>Click a medallion to see masters, heirs, and books.</p> : <p>A dashed medallion means the author is not on this shelf.</p>}
+          </div>
+        ) : null}
+      </div>
+    </aside>
+  )
+}
+
+function TreeCanvas({
+  layout,
+  selectedId,
+  setSelectedId,
+  zoom,
+  fullscreen = false,
+}: {
+  layout: { nodes: Map<string, LayoutNode>; width: number; height: number }
+  selectedId: string | null
+  setSelectedId: (id: string | null) => void
+  zoom: number
+  fullscreen?: boolean
+}) {
+  const scroller = useRef<HTMLDivElement>(null)
+  const [hoverId, setHoverId] = useState<string | null>(null)
+  const drag = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null)
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const frame = () => {
+      const homer = layout.nodes.get("homer")
+      const scale = zoomRef.current
+      const anchor = homer ? homer.x * scale - el.clientWidth / 2 : (el.scrollWidth - el.clientWidth) / 2
+      el.scrollLeft = Math.max(0, anchor)
+      el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight)
+    }
+    frame()
+    const id = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(id)
+  }, [layout, fullscreen])
+
+  const ancestors = useMemo(() => (selectedId ? new Set(ancestralChainOf(selectedId).map((author) => author.id)) : new Set<string>()), [selectedId])
+  const descendants = useMemo(() => (selectedId ? allDescendantsOf(selectedId) : new Set<string>()), [selectedId])
+  const eraColor = (id: string) => ERAS.find((era) => era.id === id)?.color ?? "#666"
+
+  return (
+    <div
+      ref={scroller}
+      data-testid="tree-canvas"
+      className="h-full w-full cursor-grab overflow-auto bg-gradient-to-br from-wine-dark via-wine to-wine-dark active:cursor-grabbing"
+      onPointerDown={(event) => {
+        if (event.button !== 0 || !scroller.current) return
+        drag.current = { x: event.clientX, y: event.clientY, left: scroller.current.scrollLeft, top: scroller.current.scrollTop, moved: false }
+      }}
+      onPointerMove={(event) => {
+        if (!drag.current || !scroller.current) return
+        const dx = event.clientX - drag.current.x
+        const dy = event.clientY - drag.current.y
+        if (!drag.current.moved && Math.hypot(dx, dy) < 6) return
+        drag.current.moved = true
+        scroller.current.scrollLeft = drag.current.left - dx
+        scroller.current.scrollTop = drag.current.top - dy
+      }}
+      onPointerUp={() => {
+        if (!drag.current?.moved) drag.current = null
+      }}
+      onClickCapture={(event) => {
+        if (drag.current?.moved) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        drag.current = null
+      }}
+    >
+      <svg width={layout.width * zoom} height={layout.height * zoom} viewBox={`0 0 ${layout.width} ${layout.height}`} role="img" aria-label="Family tree of literature">
+        <defs>
+          <pattern id="wine-bg" width="40" height="40" patternUnits="userSpaceOnUse">
+            <rect width="40" height="40" fill="hsl(350 50% 16%)" />
+            <circle cx="10" cy="10" r="0.6" fill="hsl(42 70% 55%)" opacity="0.12" />
+            <circle cx="30" cy="20" r="0.6" fill="hsl(42 70% 55%)" opacity="0.12" />
+          </pattern>
+          <radialGradient id="medal-bg" cx="0.4" cy="0.35" r="0.7">
+            <stop offset="0" stopColor="hsl(30 25% 97%)" />
+            <stop offset="1" stopColor="hsl(42 70% 55%)" />
+          </radialGradient>
+          <clipPath id="medal-clip">
+            <circle r={NODE_RADIUS - 3} />
+          </clipPath>
+        </defs>
+        <rect width={layout.width} height={layout.height} fill="url(#wine-bg)" />
+        {ERAS.map((era) => {
+          const group = CANON_AUTHORS.filter((author) => author.era === era.id)
+          if (!group.length) return null
+          const ys = group.map((author) => layout.nodes.get(author.id)?.y).filter((value): value is number => value != null)
+          if (!ys.length) return null
+          const top = Math.min(...ys) - NODE_RADIUS - 18
+          const bottom = Math.max(...ys) + NODE_RADIUS + 36
+          return (
+            <g key={era.id}>
+              <rect x={0} y={top} width={layout.width} height={bottom - top} fill={era.color} opacity={0.06} />
+              <text x={20} y={top + 16} fill="hsl(42 70% 55%)" fontFamily="Georgia, serif" fontSize={14} opacity={0.55} letterSpacing={2}>
+                {era.name.toUpperCase()}
+              </text>
+            </g>
+          )
+        })}
+        {[...layout.nodes.values()].map((node) => {
+          if (!node.author.mainParent) return null
+          const parent = layout.nodes.get(node.author.mainParent)
+          if (!parent) return null
+          const onPath = selectedId && (ancestors.has(node.author.id) || ancestors.has(parent.author.id) || node.author.id === selectedId || parent.author.id === selectedId || descendants.has(node.author.id))
+          const midY = (node.y + parent.y) / 2
+          return (
+            <path
+              key={`branch-${node.author.id}`}
+              d={`M ${parent.x} ${parent.y} C ${parent.x} ${midY}, ${node.x} ${midY}, ${node.x} ${node.y}`}
+              stroke={onPath ? "hsl(42 70% 55%)" : "hsl(30 25% 97% / 0.45)"}
+              strokeWidth={onPath ? 3.5 : 1.4}
+              fill="none"
+              opacity={selectedId && !onPath ? 0.12 : onPath ? 0.95 : 0.5}
+            />
+          )
+        })}
+        {[...layout.nodes.values()].map((node) =>
+          node.author.influencedBy
+            .filter((id) => id !== node.author.mainParent)
+            .map((id) => {
+              const parent = layout.nodes.get(id)
+              if (!parent) return null
+              const active = !selectedId || selectedId === node.author.id
               return (
                 <path
-                  key={`${edge.from}-${edge.to}`}
-                  d={`M ${from.x} ${from.y} C ${from.x} ${midY}, ${to.x} ${midY}, ${to.x} ${to.y}`}
+                  key={`cross-${node.author.id}-${id}`}
+                  d={`M ${parent.x} ${parent.y} Q ${(parent.x + node.x) / 2 + 30} ${(parent.y + node.y) / 2}, ${node.x} ${node.y}`}
+                  stroke="hsl(42 70% 55%)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
                   fill="none"
-                  stroke={hot ? "hsl(42 78% 62%)" : "hsl(40 35% 70%)"}
-                  strokeWidth={hot ? 4 : 1.8}
-                  opacity={revealed && !hot ? 0.45 : 0.95}
+                  opacity={active ? 0.75 : 0.15}
                 />
               )
-            })}
-            {[...positions.values()].map(({ author, x, y }) => {
-              const on = author.id === askedId
-              const dim = revealed != null && !lit.has(author.id)
-              const lines = nameLines(author.name)
-              return (
-                <g key={author.id} opacity={dim ? 0.82 : 1}>
-                  <title>{`${author.name}. ${author.life}`}</title>
-                  <circle cx={x} cy={y} r={on ? 16 : 13} fill={on ? "hsl(42 70% 55%)" : "hsl(30 28% 92%)"} stroke="hsl(42 55% 48%)" strokeWidth={on ? 3 : 1.2} />
-                  <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fontFamily="Georgia, serif" fill="hsl(350 45% 22%)">
-                    {monogram(author.name)}
-                  </text>
-                  {lines.map((line, index) => (
-                    <text key={line} x={x} y={y + nameSize * 1.8 + index * nameSize * 1.25} textAnchor="middle" fontSize={nameSize} fill="hsl(36 55% 96%)" fontFamily="Georgia, serif">
-                      {line}
-                    </text>
-                  ))}
-                </g>
-              )
-            })}
-          </svg>
+            }),
+        )}
+        {[...layout.nodes.values()].map((node) => {
+          const author = node.author
+          const isSelected = selectedId === author.id
+          const highlighted = isSelected || ancestors.has(author.id) || descendants.has(author.id)
+          const dimmed = !!selectedId && !highlighted
+          const ring = isSelected ? "hsl(42 70% 55%)" : ancestors.has(author.id) ? "hsl(350 40% 45%)" : descendants.has(author.id) ? "hsl(42 65% 70%)" : author.ghost ? "hsl(30 25% 97% / 0.35)" : eraColor(author.era)
+          return (
+            <g
+              key={author.id}
+              transform={`translate(${node.x} ${node.y})`}
+              opacity={dimmed ? 0.25 : 1}
+              className="cursor-pointer"
+              onClick={() => setSelectedId(isSelected ? null : author.id)}
+              onMouseEnter={() => setHoverId(author.id)}
+              onMouseLeave={() => setHoverId(null)}
+            >
+              <title>{`${author.name}. ${author.summary}`}</title>
+              <circle r={NODE_RADIUS + 4} fill={ring} opacity={0.5} />
+              <circle r={NODE_RADIUS} fill="url(#medal-bg)" stroke={ring} strokeWidth={isSelected ? 3 : highlighted ? 2 : 1.5} strokeDasharray={author.ghost ? "3 2" : undefined} />
+              <image href={authorBustDataUri(author.name)} x={-(NODE_RADIUS - 3)} y={-(NODE_RADIUS - 3)} width={(NODE_RADIUS - 3) * 2} height={(NODE_RADIUS - 3) * 2} clipPath="url(#medal-clip)" preserveAspectRatio="xMidYMid slice" />
+              {author.ghost ? <circle r={NODE_RADIUS + 6} fill="none" stroke="hsl(30 25% 97% / 0.55)" strokeWidth={0.8} strokeDasharray="3 2" /> : null}
+              <text y={NODE_RADIUS + 16} textAnchor="middle" fill={highlighted || hoverId === author.id ? "hsl(30 25% 97%)" : "hsl(30 25% 97% / 0.85)"} fontFamily="Georgia, serif" fontSize={isSelected ? 12 : 10} fontWeight={highlighted ? 700 : 500}>
+                {author.name}
+              </text>
+              <text y={NODE_RADIUS + 28} textAnchor="middle" fill="hsl(42 70% 55% / 0.8)" fontSize={8} fontFamily="sans-serif">
+                {formatYear(author.bornYear)}
+                {author.diedYear != null ? ` – ${formatYear(author.diedYear)}` : ""}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+function AuthorSheet({ selectedId, setSelectedId }: { selectedId: string | null; setSelectedId: (id: string | null) => void }) {
+  const selected = selectedId ? findCanonAuthor(selectedId) : undefined
+  const heirs = useMemo(() => (selectedId ? [...allDescendantsOf(selectedId)] : []), [selectedId])
+  if (!selected) return null
+  const era = ERAS.find((item) => item.id === selected.era)
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-20 max-h-[75%] overflow-y-auto rounded-t-2xl border-t border-line bg-paper p-4 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[26rem] md:rounded-none md:border-l" data-testid="author-sheet">
+      <button type="button" onClick={() => setSelectedId(null)} className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <ArrowLeft className="size-3" /> Close
+      </button>
+      <h3 className="font-serif text-2xl">{selected.name}</h3>
+      <div className="mt-4 flex items-start gap-3">
+        <img src={authorBustDataUri(selected.name)} alt="" className="h-24 w-20 rounded-lg bg-wine-dark object-cover ring-1 ring-border" />
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            {formatYear(selected.bornYear)}
+            {selected.diedYear != null ? ` – ${formatYear(selected.diedYear)}` : ""}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">{selected.nationality}</span>
+            <span className="rounded-full border border-border px-2 py-0.5 text-[10px]">{era?.name}</span>
+            {selected.ghost ? <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[10px]">Not on this shelf</span> : null}
+          </div>
+          <p className="pt-1 text-sm leading-relaxed">{selected.summary}</p>
         </div>
-        <aside className="rounded-2xl border border-border bg-card p-4">
-          {asked ? (
-            <>
-              <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">This question</p>
-              <h2 className="mt-1 font-serif text-2xl">{asked.name}</h2>
-              <p className="text-xs text-muted-foreground">{asked.life}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{asked.bio}</p>
-              {revealed && questionEdge ? (
-                <div className="mt-4 text-sm">
-                  <p className="font-serif">
-                    {authorById(questionEdge.from)?.name} → {authorById(questionEdge.to)?.name}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">{questionEdge.note}</p>
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-muted-foreground">The link stays hidden until you answer.</p>
-              )}
-              {worksByAuthor(asked.id)[0] ? (
-                <Link to={`/book/${worksByAuthor(asked.id)[0]?.textId ?? worksByAuthor(asked.id)[0]?.id}`} className="mt-4 inline-block text-sm text-primary">
-                  Open a work
-                </Link>
-              ) : null}
-            </>
-          ) : null}
-        </aside>
       </div>
-    </main>
+      <section className="mt-4">
+        <p className="mb-2 text-xs tracking-wider text-muted-foreground uppercase">Influenced by ({selected.influencedBy.length})</p>
+        {selected.influencedBy.length === 0 ? <p className="text-xs text-muted-foreground italic">A root. No earlier literary master is mapped.</p> : null}
+        <div className="space-y-1.5">
+          {selected.influencedBy.map((id) => {
+            const parent = findCanonAuthor(id)
+            if (!parent) return null
+            return (
+              <button key={id} type="button" onClick={() => setSelectedId(id)} className="flex w-full items-center gap-2 rounded p-1.5 text-left hover:bg-secondary">
+                <img src={authorBustDataUri(parent.name)} alt="" className="size-7 rounded-full bg-wine-dark object-cover ring-1 ring-border" />
+                <span>
+                  <span className="block text-xs font-medium">{parent.name}</span>
+                  <span className="block text-[10px] text-muted-foreground">{formatYear(parent.bornYear)}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+      <section className="mt-4">
+        <p className="mb-2 text-xs tracking-wider text-muted-foreground uppercase">Influenced ({heirs.length} heirs)</p>
+        {heirs.length === 0 ? <p className="text-xs text-muted-foreground italic">A leaf. No later heirs are mapped.</p> : null}
+        <div className="space-y-1.5">
+          {heirs.slice(0, 15).map((id) => {
+            const heir = findCanonAuthor(id)
+            if (!heir) return null
+            return (
+              <button key={id} type="button" onClick={() => setSelectedId(id)} className="flex w-full items-center gap-2 rounded p-1.5 text-left hover:bg-secondary">
+                <img src={authorBustDataUri(heir.name)} alt="" className="size-7 rounded-full bg-wine-dark object-cover ring-1 ring-border" />
+                <span className="text-xs font-medium">{heir.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+      {selected.workIds.length > 0 ? (
+        <section className="mt-4 border-t border-border pt-3">
+          <p className="mb-2 text-xs tracking-wider text-muted-foreground uppercase">Works on this shelf</p>
+          <div className="flex flex-col gap-1.5">
+            {worksByAuthor(selected.id).map((work) => (
+              <Link key={work.id} to={`/book/${work.id}`} className="rounded bg-primary/10 px-2.5 py-1.5 text-xs text-primary hover:bg-primary/20">
+                {work.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
   )
 }

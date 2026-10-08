@@ -8,9 +8,9 @@ import { useApp } from "@/state/AppProvider"
 const desktopLinks = [
   { to: "/", label: "Explore", end: true },
   { to: "/shelf", label: "Shelf" },
-  { to: "/map", label: "Map" },
+  { to: "/map", label: "World map" },
   { to: "/journey", label: "Journey" },
-  { to: "/tree", label: "Tree" },
+  { to: "/tree", label: "Family tree" },
   { to: "/community", label: "Community" },
   { to: "/settings", label: "Settings" },
 ]
@@ -23,9 +23,8 @@ const tabs = [
 ]
 
 const moreLinks = [
-  { to: "/journey", label: "Journey" },
+  { to: "/journey", label: "Journey through Literature" },
   { to: "/tree", label: "Family tree" },
-  { to: "/openings", label: "Opening lines" },
   { to: "/settings", label: "Settings" },
 ]
 

@@ -1,11 +1,10 @@
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom"
 import { Shell } from "@/components/Shell"
 import { BookPage } from "@/pages/BookPage"
 import { CommunityPage } from "@/pages/CommunityPage"
 import { JourneyPage } from "@/pages/JourneyPage"
 import { LibraryPage } from "@/pages/LibraryPage"
 import { MapPage } from "@/pages/MapPage"
-import { OpeningsPage } from "@/pages/OpeningsPage"
 import { ReaderPage } from "@/pages/ReaderPage"
 import { SalonPage } from "@/pages/SalonPage"
 import { SettingsPage } from "@/pages/SettingsPage"
@@ -29,7 +28,7 @@ export function App() {
             <Route path="/map" element={<MapPage />} />
             <Route path="/journey" element={<JourneyPage />} />
             <Route path="/tree" element={<TreePage />} />
-            <Route path="/openings" element={<OpeningsPage />} />
+            <Route path="/openings" element={<Navigate to="/journey" replace />} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/salon/:salonId" element={<SalonPage />} />
             <Route path="/settings" element={<SettingsPage />} />

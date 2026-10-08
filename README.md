@@ -54,7 +54,7 @@ Tradeoff worth sitting with: this relay is not a public Nostr relay. A reader ca
 
 The palette is the one from O Cenáculo: wine, cream, gold, Playfair Display for titles, DM Sans for the rest. Both fonts are self-hosted so the installed app still opens offline. Light, sepia, and dark still switch the same tokens.
 
-Explore is the front page. The shelf is this browser’s own progress, marks, and quotes. The map, the journey, the family tree, and the opening-lines game are scored on this device (`localStorage`, key `margem-games`). The facts they use live in [`shared/canon.ts`](shared/canon.ts) and are explained in [content/CANON.md](content/CANON.md). Only The Raven has a parallel text. The other works are metadata, with the public-domain note written on each one.
+Explore is the front page. The shelf is this browser’s own progress, marks, and quotes. Literary games are three offline explorations, not quizzes: a world map of collections, a journey across eras, and a family tree. Their facts live in [`shared/canon.ts`](shared/canon.ts), [`shared/literary-canon.ts`](shared/literary-canon.ts), and [`shared/literary-maps.ts`](shared/literary-maps.ts). Only The Raven has a parallel text. The other works are metadata, with the public-domain note written on each one.
 
 Community is signed events, not an account. Reading rooms, salon threads, and marginalia use the reading key. A letter uses a one-time key that this browser does not keep. The relay accepts that mismatch only for letters, and still checks the signature. The owner’s blocklist hides a key or a single event everywhere, including there. “Trending this week” counts events already synced to this browser.
 

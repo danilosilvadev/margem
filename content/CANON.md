@@ -25,6 +25,6 @@ No other “influenced by” arrow is drawn. Salon prompts are questions, not po
 
 The birthplace map draws Natural Earth 110m land (public domain) and pins only authors with `onMap` left on. Translators and the extra tree names stay off that plate so Europe can be labeled.
 
-Opening lines used in the game are shuffled each round. Each one is the author’s own public-domain wording, or a named public-domain translation (Ormsby 1885, Garnett 1901). The Kafka line is the German first sentence of the 1915 story, not an English translation. See `OPENINGS` in `shared/canon.ts`.
+The literary games are explorations. World Map, Journey through Literature, and Family Tree do not ask questions or keep a score. Opening lines in `OPENINGS` remain source notes: each one is the author’s own public-domain wording, or a named public-domain translation (Ormsby 1885, Garnett 1901). The Kafka line is the German first sentence of the 1915 story.
 
 A Russian or German original being public domain does not make a later translation public domain. The file says that on each work.
