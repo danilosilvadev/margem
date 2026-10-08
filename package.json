@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "sync-content": "node scripts/sync-content.mjs",
-    "predev": "node scripts/sync-content.mjs",
+    "predev": "node scripts/write-icons.mjs && node scripts/sync-content.mjs",
     "dev": "vite --host 127.0.0.1 --port 41731",
-    "build": "node scripts/sync-content.mjs && tsc -b && vite build",
+    "build": "node scripts/write-icons.mjs && node scripts/sync-content.mjs && tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 41731",
     "test": "vitest run",
     "relay": "tsx relay/server.ts",
