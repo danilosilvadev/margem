@@ -1,0 +1,73 @@
+{
+  "books": [
+    {
+      "id": "the-raven",
+      "languages": [
+        "en",
+        "pt",
+        "es"
+      ],
+      "title": {
+        "en": "The Raven",
+        "pt": "O corvo",
+        "es": "El cuervo"
+      },
+      "authors": [
+        {
+          "name": "Edgar Allan Poe",
+          "role": "Author",
+          "years": "1809–1849"
+        },
+        {
+          "name": "Machado de Assis",
+          "role": "Portuguese translator",
+          "years": "1839–1908"
+        },
+        {
+          "name": "Juan Antonio Pérez Bonalde",
+          "role": "Spanish translator",
+          "years": "1846–1892"
+        }
+      ],
+      "year": 1845,
+      "summary": "A midnight visitor, a lost Lenore, and a bird with a single word. Poe’s poem beside Machado de Assis in Portuguese and Pérez Bonalde in Spanish, stanza by stanza.",
+      "rights": [
+        {
+          "lang": "en",
+          "title": "The Raven",
+          "credit": "Edgar Allan Poe",
+          "edition": "The Raven and Other Poems, New York: Wiley and Putnam, 1845, pp. 1–5.",
+          "source": "https://en.wikisource.org/wiki/The_Raven_and_Other_Poems/The_Raven",
+          "rationale": "Poe died in 1849. This text is the 1845 authorized collection. In the United States every work published in 1845 is in the public domain. Elsewhere the author’s life ended more than a century ago, so the poem is in the public domain."
+        },
+        {
+          "lang": "pt",
+          "title": "O corvo",
+          "credit": "Machado de Assis, after Edgar Allan Poe",
+          "edition": "Poesias completas, Rio de Janeiro: Livraria Garnier, 1902, pp. 299–305 (Ocidentais). The translation first appeared in 1883.",
+          "source": "https://pt.wikisource.org/wiki/O_Corvo_(tradu%C3%A7%C3%A3o_de_Machado_de_Assis)",
+          "rationale": "The translation is Machado’s, not a later translator’s. He died in 1908. Brazil, Portugal, and the European Union use a term of life plus 70 years, so this text entered the public domain at the start of 1979. The 1902 printing is followed here, including two words Wikisource marks as printer’s errors: “sussura” and “Dize as teus nomes”."
+        },
+        {
+          "lang": "es",
+          "title": "El cuervo",
+          "credit": "Juan Antonio Pérez Bonalde, after Edgar Allan Poe",
+          "edition": "Translation first published New York: La América Publishing Co. / E. P. Dutton, 1 April 1887. Reading text from the 1919 Montevideo reprint in Poemas (Claudio García), as transcribed on Spanish Wikisource.",
+          "source": "https://es.wikisource.org/wiki/El_cuervo_(P%C3%A9rez_Bonalde_tr.)",
+          "rationale": "Pérez Bonalde died in 1892. A life-plus-70 or life-plus-80 term (Spain, Venezuela, the European Union, Brazil) expired in the twentieth century. The 1887 United States copyright notice expired long before the 1930 cutoff that now governs older US publications. The 1919 reprint does not create a new copyright in his translation."
+        }
+      ],
+      "chapters": [
+        {
+          "id": "poem",
+          "title": {
+            "en": "The Raven",
+            "pt": "O corvo",
+            "es": "El cuervo"
+          },
+          "paragraphCount": 18
+        }
+      ]
+    }
+  ]
+}
