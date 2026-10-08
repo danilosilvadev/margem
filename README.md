@@ -98,7 +98,7 @@ What browsers actually allow:
 - **`navigator.storage.persist()`** asks the browser to avoid evicting the site’s IndexedDB and caches. Margem requests it on launch and reports the answer in Settings. That is not a copy you can hold in your hand.
 - **Origin Private File System** is still inside the origin. If the browser evicts the site, those files go too.
 
-So the backup is a button. Once a day, if something changed since the last backup, a small prompt asks “Back up your reading data?” with **Back up now** and **Later**. Later waits out the interval. Settings can switch the reminder to daily, every 3 days, weekly, or off. Off does not hide **Back up now**.
+So the backup is a button. The prompt does not appear on the first visit. After that, at most once a day, and only if something changed since the last backup, a small corner note asks “Back up this browser?” with **Back up now** and **Later**. Later waits out the interval. Settings can switch the reminder to daily, every 3 days, weekly, or off. Off does not hide **Back up now**.
 
 **Back up now** downloads a JSON file on a desktop browser. On a phone (or any coarse pointer where the browser can share files) it opens the system share sheet, so the file can go to Files, Drive, or a message. Cancelling the sheet does not count as a backup. Settings shows the last backup time. Restore reads that file back, checks the recovery phrase against the key, drops any comment whose signature fails, and replaces the local library. A separate identity file, or the 12-word phrase, moves the reading key without the notes.
 

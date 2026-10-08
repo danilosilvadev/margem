@@ -34,7 +34,7 @@ describe("backup reminders", () => {
 
   it("asks once there are changes, then waits after Later or a backup", () => {
     const now = 100 * day
-    expect(shouldPromptBackup(prefs({ dataRevision: 1 }), now)).toBe(true)
+    expect(shouldPromptBackup(prefs({ dataRevision: 1 }), now)).toBe(false)
     expect(shouldPromptBackup(prefs({ dataRevision: 1, lastDismissedAt: now - day + 1 }), now)).toBe(false)
     expect(shouldPromptBackup(prefs({ dataRevision: 1, lastDismissedAt: now - day }), now)).toBe(true)
     expect(shouldPromptBackup(prefs({ dataRevision: 4, lastBackupRevision: 3, lastBackupAt: now - 1_000 }), now)).toBe(false)

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { KIND } from "@shared/events"
-import { SALONS, workById, authorById } from "@shared/canon"
+import { SALONS, WORKS, workById, authorById } from "@shared/canon"
 import { letters, marginalia, readingRooms, trendingBooks } from "@shared/community"
 import { displayNames } from "@shared/merge"
 import { allEvents } from "@/lib/db"
 import { useApp } from "@/state/AppProvider"
 import { Button } from "@/components/ui/button"
+import { identiconCells, penName } from "@/lib/pen-name"
 import type { StoredEvent } from "@/lib/db"
 
 export function CommunityPage() {
@@ -15,6 +16,7 @@ export function CommunityPage() {
   const [roomTitle, setRoomTitle] = useState("")
   const [roomBook, setRoomBook] = useState("the-raven")
   const [roomNote, setRoomNote] = useState("")
+  const [marginBook, setMarginBook] = useState("the-raven")
   const [quote, setQuote] = useState("")
   const [marginNote, setMarginNote] = useState("")
   const [letter, setLetter] = useState("")
@@ -64,7 +66,16 @@ export function CommunityPage() {
           }}
         >
           <input value={roomTitle} onChange={(event) => setRoomTitle(event.target.value)} placeholder="Room title" className="rounded-md border border-border bg-background px-3 py-2" />
-          <input value={roomBook} onChange={(event) => setRoomBook(event.target.value)} placeholder="Book id, for example the-raven" className="rounded-md border border-border bg-background px-3 py-2" />
+          <label className="block">
+            <span className="sr-only">Book</span>
+            <select value={roomBook} onChange={(event) => setRoomBook(event.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2">
+              {WORKS.map((work) => (
+                <option key={work.id} value={work.id}>
+                  {work.title}
+                </option>
+              ))}
+            </select>
+          </label>
           <textarea value={roomNote} onChange={(event) => setRoomNote(event.target.value)} placeholder="When and how you want to read" className="min-h-20 rounded-md border border-border bg-background px-3 py-2 md:col-span-2" />
           <Button type="submit">Open a room</Button>
         </form>
@@ -73,7 +84,7 @@ export function CommunityPage() {
           {rooms.map((room) => (
             <article key={room.id} className="rounded-xl border border-border bg-card p-4 shadow-soft" data-testid="reading-room">
               <p className="font-serif text-lg">{room.title}</p>
-              <p className="text-xs text-muted-foreground">{names.get(room.pubkey) ?? "A reader"} · {labelWork(room.bookId)}</p>
+              <ReaderLine pubkey={room.pubkey} fallback={names.get(room.pubkey)} suffix={labelWork(room.bookId)} />
               {room.note ? <p className="mt-2 text-sm">{room.note}</p> : null}
             </article>
           ))}
@@ -105,7 +116,7 @@ export function CommunityPage() {
               if (!quote.trim() && !marginNote.trim()) return
               void publishCommunity({
                 kind: KIND.marginalia,
-                tags: [["b", "the-raven"]],
+                tags: [["b", marginBook]],
                 content: JSON.stringify({ quote: quote.trim(), note: marginNote.trim() }),
               }).then(() => {
                 setQuote("")
@@ -113,6 +124,13 @@ export function CommunityPage() {
               })
             }}
           >
+            <select value={marginBook} onChange={(event) => setMarginBook(event.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2">
+              {WORKS.map((work) => (
+                <option key={work.id} value={work.id}>
+                  {work.title}
+                </option>
+              ))}
+            </select>
             <textarea value={quote} onChange={(event) => setQuote(event.target.value)} placeholder="The line" className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2" />
             <textarea value={marginNote} onChange={(event) => setMarginNote(event.target.value)} placeholder="What you want beside it" className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2" />
             <Button type="submit">Sign this mark</Button>
@@ -122,7 +140,7 @@ export function CommunityPage() {
             <article key={mark.id} className="rounded-xl border border-gold/30 bg-card p-4" data-testid="marginalia">
               {mark.quote ? <p className="font-serif">“{mark.quote}”</p> : null}
               {mark.note ? <p className="mt-2 text-sm">{mark.note}</p> : null}
-              <p className="mt-2 text-xs text-muted-foreground">{names.get(mark.pubkey) ?? shortKey(mark.pubkey)} · {labelWork(mark.bookId)}</p>
+              <ReaderLine pubkey={mark.pubkey} fallback={names.get(mark.pubkey)} suffix={labelWork(mark.bookId)} />
             </article>
           ))}
         </section>
@@ -191,6 +209,19 @@ function labelWork(id: string): string {
   return author ? `${work.title}, ${author.name}` : work.title
 }
 
-function shortKey(pubkey: string): string {
-  return `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}`
+function ReaderLine({ pubkey, fallback, suffix }: { pubkey: string; fallback?: string; suffix: string }) {
+  const name = fallback?.trim() || penName(pubkey)
+  const cells = identiconCells(pubkey)
+  return (
+    <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground" title={pubkey}>
+      <svg viewBox="0 0 5 5" className="h-6 w-6 shrink-0 rounded bg-wine-dark" aria-hidden="true">
+        {cells.map((on, index) =>
+          on ? <rect key={index} x={index % 5} y={Math.floor(index / 5)} width="1" height="1" fill="hsl(42 70% 55%)" /> : null,
+        )}
+      </svg>
+      <span>
+        {name} · {suffix}
+      </span>
+    </p>
+  )
 }

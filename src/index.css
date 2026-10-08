@@ -152,6 +152,16 @@ body,
   min-height: 100%;
 }
 
+html {
+  scroll-padding-top: 4.75rem;
+}
+
+h1,
+h2,
+h3 {
+  scroll-margin-top: 4.75rem;
+}
+
 body {
   margin: 0;
   background: hsl(var(--background));

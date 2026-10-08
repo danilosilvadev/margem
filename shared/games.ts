@@ -24,9 +24,9 @@ export function noteOpeningBest(progress: GameProgress["openings"], roundCorrect
   return { ...progress, best: Math.max(progress.best, roundCorrect) }
 }
 
-/** Birthplace country. Authors with no known birthplace are not questions. */
+/** Birthplace country. No known birthplace, and names kept off the map, are not questions. */
 export function mapQuestions(): { authorId: string; prompt: string; answer: string }[] {
-  return AUTHORS.filter((author) => author.country).map((author) => ({
+  return AUTHORS.filter((author) => author.country && author.onMap !== false).map((author) => ({
     authorId: author.id,
     prompt: `Where was ${author.name} born?`,
     answer: author.country as string,
@@ -44,15 +44,18 @@ export function checkCountry(authorId: string, guess: string): boolean {
 }
 
 export function treeQuestions(): { id: string; prompt: string; answer: string; choices: string[] }[] {
-  return INFLUENCES.map((edge) => {
+  return INFLUENCES.map((edge, index) => {
     const from = authorById(edge.from)
     const to = authorById(edge.to)
     const names = AUTHORS.map((author) => author.name).filter((name) => name !== from?.name && name !== to?.name)
+    const wrongA = names[index % names.length] ?? ""
+    const wrongB = names[(index + 5) % names.length] ?? ""
+    const choices = [...new Set([from?.name ?? "", wrongA, wrongB])].filter(Boolean)
     return {
       id: `${edge.from}-${edge.to}`,
       prompt: to ? `Who stands behind ${to.name} on this tree?` : edge.note,
       answer: from?.name ?? "",
-      choices: [from?.name ?? "", names[0] ?? "", names[1] ?? ""].filter(Boolean),
+      choices,
     }
   })
 }
@@ -62,15 +65,19 @@ export function checkInfluence(questionId: string, guess: string): boolean {
   return authorById(edge?.from ?? "")?.name === guess
 }
 
-export function openingChoices(answerWorkId: string): { id: string; title: string }[] {
-  const titles = new Map<string, string>()
+export function openingChoices(answerWorkId: string): { id: string; title: string; author: string }[] {
+  const unique = new Map<string, { title: string; author: string }>()
   for (const opening of OPENINGS) {
-    if (opening.workId === "moby-dick-line") titles.set(opening.workId, "Moby-Dick")
-    else titles.set(opening.workId, workById(opening.workId)?.title ?? opening.workId)
+    if (!unique.has(opening.workId)) unique.set(opening.workId, { title: opening.title, author: opening.author })
   }
-  const answer = titles.get(answerWorkId) ?? answerWorkId
-  const rest = [...titles.entries()].filter(([id]) => id !== answerWorkId).slice(0, 3)
-  return [{ id: answerWorkId, title: answer }, ...rest.map(([id, title]) => ({ id, title }))]
+  const answer = unique.get(answerWorkId) ?? { title: workById(answerWorkId)?.title ?? answerWorkId, author: "" }
+  const rest = [...unique.entries()].filter(([id]) => id !== answerWorkId)
+  const start = [...answerWorkId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % Math.max(rest.length, 1)
+  const wrong = [0, 1, 2].map((offset) => rest[(start + offset) % rest.length]).filter((item): item is [string, { title: string; author: string }] => Boolean(item))
+  return [
+    { id: answerWorkId, title: answer.title, author: answer.author },
+    ...wrong.map(([id, value]) => ({ id, title: value.title, author: value.author })),
+  ]
 }
 
 export function checkOpening(openingId: string, workId: string): boolean {

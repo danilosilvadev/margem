@@ -10,13 +10,26 @@ describe("canon", () => {
     expect(authorById("homer")?.country).toBeNull()
     expect(INFLUENCES.map((edge) => `${edge.from}->${edge.to}`)).toEqual([
       "homer->virgil",
+      "aeschylus->sophocles",
       "virgil->dante",
+      "virgil->petrarch",
+      "dante->boccaccio",
+      "seneca->shakespeare",
+      "shakespeare->goethe",
+      "milton->shelley",
+      "poe->baudelaire",
       "poe->machado",
       "poe->perez-bonalde",
+      "gogol->dostoevsky",
+      "rousseau->tolstoy",
+      "dickens->kafka",
     ])
     expect(WORKS.find((work) => work.id === "the-raven")?.textId).toBe("the-raven")
-    expect(AUTHORS.filter((author) => author.country).length).toBeGreaterThan(8)
-    expect(OPENINGS).toHaveLength(5)
+    expect(AUTHORS.filter((author) => author.country && author.onMap !== false).length).toBeGreaterThan(8)
+    expect(authorById("perez-bonalde")?.onMap).toBe(false)
+    expect(authorById("machado")?.name).toBe("Machado de Assis")
+    expect(OPENINGS.length).toBeGreaterThanOrEqual(10)
+    expect(OPENINGS.every((line) => line.author && line.title && line.citation)).toBe(true)
   })
 })
 

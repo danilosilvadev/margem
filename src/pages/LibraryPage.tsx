@@ -5,6 +5,7 @@ import { brand } from "@shared/brand"
 import { LANG_LABEL, type CatalogBook } from "@shared/types"
 import { allProgress, getShelf } from "@/lib/db"
 import { loadCatalog } from "@/lib/catalog"
+import { GeneratedCover } from "@/components/GeneratedCover"
 import { useApp } from "@/state/AppProvider"
 
 export function LibraryPage() {
@@ -55,11 +56,8 @@ export function LibraryPage() {
       <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-hero text-cream shadow-elevated">
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_70%_30%,hsl(var(--gold)/0.7),transparent_60%)]" />
         <div className="relative grid gap-6 p-6 md:grid-cols-[auto_1fr] md:p-8">
-          <Link
-            to={`/book/${featured?.textId ?? featured?.id}`}
-            className="grid h-44 w-32 place-items-center rounded-xl bg-wine-dark font-serif text-4xl text-gold ring-2 ring-gold/40"
-          >
-            {featured?.title.slice(0, 1)}
+          <Link to={`/book/${featured?.textId ?? featured?.id}`} className="block h-44 w-32 overflow-hidden rounded-xl shadow-elevated ring-2 ring-gold/50">
+            <GeneratedCover bookId={featured?.id ?? "book"} title={featured?.title ?? "A book"} author={featuredAuthor?.name} className="h-full w-full" />
           </Link>
           <div>
             <p className="text-[10px] tracking-[0.25em] text-gold uppercase">On this device</p>

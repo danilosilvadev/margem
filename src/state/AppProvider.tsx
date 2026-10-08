@@ -101,7 +101,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let cancel = false
     void (async () => {
       const nextIdentity = await getOrCreateIdentity(createIdentity)
-      const [nextSettings, nextBackup] = await Promise.all([getSettings(), getBackupState()])
+      const [nextSettings, loadedBackup] = await Promise.all([getSettings(), getBackupState()])
+      if (cancel) return
+      let nextBackup = loadedBackup
+      if (nextBackup.lastBackupAt == null && nextBackup.lastDismissedAt == null) {
+        nextBackup = { ...nextBackup, lastDismissedAt: Date.now() }
+        await saveBackupState(nextBackup)
+      }
       if (cancel) return
       setIdentity(nextIdentity)
       setSettings(nextSettings)

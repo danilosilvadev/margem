@@ -15,14 +15,15 @@ export function reminderIntervalMs(frequency: ReminderFrequency): number | null 
 
 /**
  * Prompt only when the reader has changes newer than the last backup,
- * and only once per reminder interval. Never writes a file by itself.
+ * and only once per reminder interval. Never on the first visit
+ * (no backup and no earlier dismissal). Never writes a file by itself.
  */
 export function shouldPromptBackup(prefs: BackupPrefs, now: number): boolean {
   const interval = reminderIntervalMs(prefs.frequency)
   if (interval === null) return false
   if (prefs.dataRevision <= prefs.lastBackupRevision) return false
   const anchor = Math.max(prefs.lastBackupAt ?? 0, prefs.lastDismissedAt ?? 0)
-  if (anchor === 0) return true
+  if (anchor === 0) return false
   return now - anchor >= interval
 }
 
