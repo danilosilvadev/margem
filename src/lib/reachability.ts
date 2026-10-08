@@ -45,7 +45,8 @@ export async function probeReachability(): Promise<boolean> {
     return false
   }
   try {
-    await fetch("/__reachability", { cache: "no-store" })
+    const base = import.meta.env.BASE_URL || "/"
+    await fetch(`${base.endsWith("/") ? base : `${base}/`}__reachability`, { cache: "no-store" })
     noteNetworkSuccess()
     return true
   } catch {

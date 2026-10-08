@@ -18,6 +18,7 @@ In another terminal, the relay prints a moderator public key and writes `relay-d
 npm test             # storage, signatures, merge, backups, relay
 npm run build        # static files in dist/
 npm run preview      # serve the built PWA
+VITE_BASE_PATH=/margem/ npm run build   # static files for GitHub Pages at /margem/
 npm run measure      # print the storage figures below
 ```
 
@@ -34,6 +35,16 @@ Open the site, then Settings if you want a display name. To try two readers in o
 | Identity | Ed25519 (`@noble/ed25519`) and a 12-word BIP-39 phrase (`@scure/bip39`) | The public key is the user id. Nostr uses secp256k1 so it can join that network; that pulls in a larger stack and a protocol we would have to keep up with. These comments only need to verify. Ed25519 is smaller and does not depend on WebCrypto, which still does not expose it everywhere. |
 | Sync | A tiny WebSocket relay, plus WebRTC when two readers of the same book are both online | The relay is one Node process and one JSONL file. It checks signatures, stores events, and fans them out by book and chapter. It also forwards WebRTC signaling. Direct links are a bonus path. The relay remains the copy that is there when the other person has closed the tab. |
 | Offline | Service worker (vite-plugin-pwa) | The shell, fonts, and catalog are precached. Each book is fetched when opened and then kept by the Cache API and IndexedDB. |
+
+## GitHub Pages
+
+The site is a static build. The relay is optional: if nothing answers at the socket, the header says **Relay offline**, and a note you sign stays on this device.
+
+```bash
+VITE_BASE_PATH=/margem/ npm run build
+```
+
+That sets Vite’s `base` to `/margem/`, the web app manifest `start_url` and `scope`, and the service worker’s navigation fallback to `/margem/index.html`. Book files are requested under the same prefix. `public/404.html` is the Pages fallback: an unknown path such as `/margem/book/the-raven` is sent back to `/margem/?p=/book/the-raven`, and the app restores that path before it renders. [`.github/workflows/pages.yml`](.github/workflows/pages.yml) builds with that base and deploys `dist/`.
 
 The reader shows “You are offline” when the browser fires `offline`, or when a request to `/__reachability` fails. That path is not precached, so a CacheFirst worker cannot answer it from the book cache. Chromium can leave `navigator.onLine` true while requests are blocked; the probe is what the banner follows in that case. A book already on the device still opens.
 

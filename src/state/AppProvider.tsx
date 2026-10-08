@@ -52,6 +52,7 @@ type AppValue = {
   importTransfer: (raw: unknown) => Promise<TransferResult>
   toggleOnShelf: (bookId: string, on: boolean) => Promise<void>
   watchChapter: (bookId: string, chapterId: string) => () => void
+  watchBook: (bookId: string) => () => void
   publishComment: (input: {
     bookId: string
     chapterId: string
@@ -96,6 +97,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null)
   const clientRef = useRef<RelayClient | null>(null)
   const chapterRef = useRef<{ bookId: string; chapterId: string } | null>(null)
+  const bookPageRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancel = false
@@ -181,6 +183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             book: chapter.bookId,
             chapter: chapter.chapterId,
           })
+        }
+        if (bookPageRef.current) {
+          client.subscribe("book-page", { kinds: [KIND.comment, KIND.delete], book: bookPageRef.current })
         }
         client.subscribe("community", {
           kinds: [KIND.readingRoom, KIND.salonPost, KIND.marginalia, KIND.letter],
@@ -301,6 +306,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTick((value) => value + 1)
   }, [])
 
+  const watchBook = useCallback((bookId: string) => {
+    bookPageRef.current = bookId
+    clientRef.current?.subscribe("book-page", { kinds: [KIND.comment, KIND.delete], book: bookId })
+    return () => {
+      if (bookPageRef.current === bookId) {
+        bookPageRef.current = null
+        clientRef.current?.unsubscribe("book-page")
+      }
+    }
+  }, [])
+
   const watchChapter = useCallback((bookId: string, chapterId: string) => {
     chapterRef.current = { bookId, chapterId }
     clientRef.current?.subscribe("chapter", { kinds: [KIND.comment, KIND.delete], book: bookId, chapter: chapterId })
@@ -407,6 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       importTransfer,
       toggleOnShelf,
       watchChapter,
+      watchBook,
       publishComment,
       deleteComment,
       publishCommunity,
@@ -436,6 +453,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     importTransfer,
     toggleOnShelf,
     watchChapter,
+    watchBook,
     publishComment,
     deleteComment,
     publishCommunity,

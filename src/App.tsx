@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom"
 import { Shell } from "@/components/Shell"
 import { BookPage } from "@/pages/BookPage"
 import { CommunityPage } from "@/pages/CommunityPage"
@@ -13,10 +13,13 @@ import { ShelfPage } from "@/pages/ShelfPage"
 import { TreePage } from "@/pages/TreePage"
 import { AppProvider } from "@/state/AppProvider"
 
+const rawBase = import.meta.env.BASE_URL
+const basename = !rawBase || rawBase === "/" ? undefined : rawBase.replace(/\/$/, "")
+
 export function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route element={<Shell />}>
             <Route path="/" element={<LibraryPage />} />
@@ -42,9 +45,9 @@ function Missing() {
   return (
     <main className="mx-auto max-w-xl px-5 py-16">
       <h1 className="font-serif text-3xl">That page is not in the book.</h1>
-      <a className="mt-4 inline-block text-accent" href="/">
+      <Link className="mt-4 inline-block text-accent" to="/">
         Return to the shelf
-      </a>
+      </Link>
     </main>
   )
 }

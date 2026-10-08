@@ -1,23 +1,13 @@
 import { useMemo, useState } from "react"
-import { OPENINGS, type Opening } from "@shared/canon"
-import { checkOpening, noteOpeningBest, openingChoices, recordAnswer } from "@shared/games"
+import { Check, X } from "lucide-react"
+import { OPENINGS } from "@shared/canon"
+import { checkOpening, noteOpeningBest, openingChoices, openingCredit, orderOpenings, recordAnswer } from "@shared/games"
 import { LiteraryTabs } from "@/components/LiteraryTabs"
 import { loadGameProgress, saveGameProgress } from "@/lib/game-store"
 import { Button } from "@/components/ui/button"
 
-function shuffle(lines: Opening[]): Opening[] {
-  const next = [...lines]
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(Math.random() * (index + 1))
-    const current = next[index]
-    next[index] = next[swap] as Opening
-    next[swap] = current as Opening
-  }
-  return next
-}
-
 export function OpeningsPage() {
-  const [deck, setDeck] = useState(() => shuffle(OPENINGS))
+  const [deck, setDeck] = useState(() => orderOpenings(OPENINGS))
   const [index, setIndex] = useState(0)
   const [progress, setProgress] = useState(() => loadGameProgress())
   const [roundCorrect, setRoundCorrect] = useState(0)
@@ -28,6 +18,7 @@ export function OpeningsPage() {
     if (!opening) return []
     return [...openingChoices(opening.workId)].sort((a, b) => a.title.localeCompare(b.title) || a.author.localeCompare(b.author))
   }, [opening])
+  const credit = opening ? openingCredit(opening.id) : ""
 
   function answer(workId: string) {
     if (!opening || picked) return
@@ -42,9 +33,8 @@ export function OpeningsPage() {
 
   function advance() {
     if (!opening || !picked) return
-    const correctNow = roundCorrect
     if (index + 1 >= deck.length) {
-      const openings = noteOpeningBest(progress.openings, correctNow)
+      const openings = noteOpeningBest(progress.openings, roundCorrect)
       const next = { ...progress, openings }
       setProgress(next)
       saveGameProgress(next)
@@ -56,7 +46,7 @@ export function OpeningsPage() {
   }
 
   function again() {
-    setDeck(shuffle(OPENINGS))
+    setDeck(orderOpenings(OPENINGS))
     setIndex(0)
     setRoundCorrect(0)
     setPicked(null)
@@ -67,9 +57,7 @@ export function OpeningsPage() {
     <main data-testid="openings" className="mx-auto max-w-3xl px-4 py-6">
       <LiteraryTabs />
       <h1 className="font-serif text-4xl">Opening lines</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {deck.length} lines, shuffled, from public-domain wording. Best round on this device: {progress.openings.best}/{deck.length}. Running score {progress.openings.correct} correct of {progress.openings.answered}.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">{deck.length} lines, shuffled, from public-domain wording. The Raven is never first.</p>
       {done ? (
         <article className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
           <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">Round complete</p>
@@ -100,17 +88,27 @@ export function OpeningsPage() {
                   type="button"
                   disabled={picked != null}
                   onClick={() => answer(choice.id)}
-                  className={`rounded-lg border px-4 py-3 text-left ${correct ? "border-gold bg-parchment" : chosen ? "border-primary bg-secondary" : "border-border bg-background hover:border-primary"}`}
+                  className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-left ${
+                    correct
+                      ? "border-emerald-700 bg-emerald-100 text-emerald-950"
+                      : chosen
+                        ? "border-red-700 bg-red-100 text-red-950"
+                        : "border-border bg-background hover:border-primary"
+                  }`}
                 >
-                  <span className="block font-serif">{choice.title}</span>
-                  <span className="block text-xs text-muted-foreground">{choice.author}</span>
+                  {correct ? <Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> : null}
+                  {chosen && !correct ? <X className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> : null}
+                  <span>
+                    <span className="block font-serif">{choice.title}</span>
+                    <span className={`block text-xs ${correct || chosen ? "opacity-80" : "text-muted-foreground"}`}>{choice.author}</span>
+                  </span>
                 </button>
               )
             })}
           </div>
           {picked ? (
             <div className="mt-4 space-y-3">
-              <p className="text-sm">{picked === opening.workId ? "Yes." : "No."} {opening.citation}</p>
+              <p className="text-sm">{picked === opening.workId ? `Yes: ${credit}.` : `Not quite: it's ${credit}.`}</p>
               <Button onClick={advance}>{index + 1 >= deck.length ? "See the score" : "Next line"}</Button>
             </div>
           ) : null}

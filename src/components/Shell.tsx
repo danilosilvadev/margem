@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, NavLink, Outlet, useMatch } from "react-router-dom"
+import { Compass, Library, Map as MapIcon, Menu, Users } from "lucide-react"
 import { brand } from "@shared/brand"
 import { BackupPrompt } from "@/components/BackupPrompt"
 import { useApp } from "@/state/AppProvider"
@@ -15,10 +16,10 @@ const desktopLinks = [
 ]
 
 const tabs = [
-  { to: "/", label: "Explore", end: true },
-  { to: "/shelf", label: "Shelf" },
-  { to: "/map", label: "Map" },
-  { to: "/community", label: "Community" },
+  { to: "/", label: "Explore", end: true, icon: Compass },
+  { to: "/shelf", label: "Shelf", icon: Library },
+  { to: "/map", label: "Map", icon: MapIcon },
+  { to: "/community", label: "Community", icon: Users },
 ]
 
 const moreLinks = [
@@ -30,10 +31,10 @@ const moreLinks = [
 
 export function Shell() {
   const reading = useMatch("/read/:bookId/:chapterId")
-  const { syncStatus, directPeers } = useApp()
+  const { syncStatus, directPeers, promptBackup } = useApp()
   const [more, setMore] = useState(false)
   const syncLabel =
-    syncStatus === "open" ? (directPeers > 0 ? `Relay · ${directPeers} direct` : "Relay connected") : syncStatus === "connecting" ? "Connecting" : "Comments saved here"
+    syncStatus === "open" ? (directPeers > 0 ? `Relay · ${directPeers} direct` : "Relay connected") : syncStatus === "connecting" ? "Connecting" : "Relay offline"
   return (
     <div className="min-h-screen bg-background text-foreground">
       {reading ? null : (
@@ -54,13 +55,13 @@ export function Shell() {
                 </NavLink>
               ))}
             </nav>
-            <span className="ml-auto hidden text-xs text-muted-foreground lg:inline" data-testid="sync-status">
+            <span className="ml-auto text-[11px] text-muted-foreground" data-testid="sync-status">
               {syncLabel}
             </span>
           </div>
         </header>
       )}
-      <div className={reading ? undefined : "pb-20 md:pb-8"}>
+      <div className={reading ? undefined : promptBackup ? "pb-48 md:pb-28" : "pb-20 md:pb-8"}>
         <Outlet />
       </div>
       {reading ? null : (
@@ -73,9 +74,10 @@ export function Shell() {
                   end={link.end}
                   onClick={() => setMore(false)}
                   className={({ isActive }) =>
-                    `flex h-14 items-center justify-center text-xs ${isActive ? "font-semibold text-primary" : "text-muted-foreground"}`
+                    `flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] leading-none ${isActive ? "font-semibold text-primary" : "font-medium text-muted-foreground"}`
                   }
                 >
+                  <link.icon className="size-4" aria-hidden="true" />
                   {link.label}
                 </NavLink>
               </li>
@@ -83,10 +85,11 @@ export function Shell() {
             <li>
               <button
                 type="button"
-                className={`flex h-14 w-full items-center justify-center text-xs ${more ? "font-semibold text-primary" : "text-muted-foreground"}`}
+                className={`flex h-14 w-full flex-col items-center justify-center gap-0.5 text-[11px] leading-none ${more ? "font-semibold text-primary" : "font-medium text-muted-foreground"}`}
                 aria-expanded={more}
                 onClick={() => setMore((open) => !open)}
               >
+                <Menu className="size-4" aria-hidden="true" />
                 More
               </button>
             </li>

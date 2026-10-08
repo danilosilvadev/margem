@@ -192,11 +192,14 @@ h4 {
   line-height: 1.55;
 }
 
-button,
 input,
 textarea,
 select {
   font: inherit;
+}
+
+button {
+  font-family: inherit;
 }
 
 input,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { AUTHORS, INFLUENCES, OPENINGS, WORKS, authorById } from "../shared/canon.ts"
 import { letters, readingRooms, trendingBooks } from "../shared/community.ts"
 import { KIND, signEvent } from "../shared/events.ts"
-import { checkCountry, checkInfluence, checkOpening, noteOpeningBest, recordAnswer, visitEra } from "../shared/games.ts"
+import { checkCountry, checkInfluence, checkOpening, noteOpeningBest, openingCredit, orderOpenings, recordAnswer, visitEra } from "../shared/games.ts"
 import { createIdentity } from "../shared/identity.ts"
 
 describe("canon", () => {
@@ -81,6 +81,8 @@ describe("literary games", () => {
     expect(checkOpening("austen-open", "pride")).toBe(true)
     expect(visitEra(["ancient"], "ancient")).toEqual(["ancient"])
     expect(visitEra(["ancient"], "modern")).toEqual(["ancient", "modern"])
+    expect(orderOpenings(OPENINGS, () => 0)[0]?.workId).not.toBe("the-raven")
+    expect(openingCredit("raven-open")).toBe("The Raven, Edgar Allan Poe, 1845")
     const tally = recordAnswer({ correct: 1, answered: 2 }, true)
     expect(noteOpeningBest({ ...tally, best: 1 }, 2).best).toBe(2)
   })

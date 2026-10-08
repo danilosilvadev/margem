@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Margem</title>
+    <script>
+      // GitHub Pages serves this file for unknown paths under the project site.
+      ;(function () {
+        var prefix = "/margem"
+        var path = location.pathname
+        if (path === prefix || path.indexOf(prefix + "/") === 0) path = path.slice(prefix.length) || "/"
+        var rest = path + location.search + location.hash
+        if (!rest.startsWith("/") || rest.startsWith("//")) rest = "/"
+        location.replace(prefix + "/?p=" + encodeURIComponent(rest))
+      })()
+    </script>
+  </head>
+  <body>
+    <p>Opening Margem…</p>
+  </body>
+</html>

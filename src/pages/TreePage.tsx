@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { AUTHORS, INFLUENCES, authorById, worksByAuthor, type Author } from "@shared/canon"
 import { checkInfluence, recordAnswer, treeQuestions } from "@shared/games"
@@ -34,10 +34,10 @@ const BORN: Record<string, number> = {
 }
 
 const COLS = 6
-const COL_W = 150
-const ROW_H = 118
-const PAD_X = 36
-const PAD_Y = 36
+const COL_W = 168
+const ROW_H = 124
+const PAD_X = 110
+const PAD_Y = 48
 
 function monogram(name: string): string {
   const skip = new Set(["de", "von", "of", "the"])
@@ -53,31 +53,16 @@ function nameLines(name: string): string[] {
   return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")]
 }
 
-function walk(start: string, backward: boolean): Set<string> {
-  const seen = new Set<string>([start])
-  const queue = [start]
-  while (queue.length) {
-    const current = queue.pop()
-    if (!current) continue
-    for (const edge of INFLUENCES) {
-      const next = backward ? (edge.to === current ? edge.from : null) : edge.from === current ? edge.to : null
-      if (next && !seen.has(next)) {
-        seen.add(next)
-        queue.push(next)
-      }
-    }
-  }
-  return seen
-}
-
 export function TreePage() {
   const questions = useMemo(() => treeQuestions(), [])
   const [cursor, setCursor] = useState(0)
   const [progress, setProgress] = useState(() => loadGameProgress())
   const [revealed, setRevealed] = useState<{ right: boolean; text: string } | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>("dante")
   const [zoom, setZoom] = useState(1)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(1)
   const question = questions[cursor % Math.max(questions.length, 1)]
+  const askedId = question?.subjectId ?? null
   const people = useMemo(
     () => [...AUTHORS].sort((a, b) => (BORN[a.id] ?? 3000) - (BORN[b.id] ?? 3000) || a.name.localeCompare(b.name)),
     [],
@@ -94,11 +79,19 @@ export function TreePage() {
   const rows = Math.ceil(people.length / COLS)
   const width = PAD_X * 2 + COLS * COL_W
   const height = PAD_Y * 2 + rows * ROW_H
-  const ancestors = selectedId ? walk(selectedId, true) : new Set<string>()
-  const descendants = selectedId ? walk(selectedId, false) : new Set<string>()
-  const lit = new Set([...ancestors, ...descendants])
-  const selected = selectedId ? authorById(selectedId) : undefined
-  const related = INFLUENCES.filter((edge) => edge.from === selectedId || edge.to === selectedId)
+  const asked = askedId ? authorById(askedId) : undefined
+  const questionEdge = INFLUENCES.find((edge) => `${edge.from}-${edge.to}` === question?.id)
+  const lit = revealed && questionEdge ? new Set([questionEdge.from, questionEdge.to]) : new Set<string>()
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    const apply = () => setFit(el.clientWidth / width)
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [width])
 
   function answer(guess: string) {
     if (!question || revealed) return
@@ -107,8 +100,10 @@ export function TreePage() {
     setProgress(next)
     saveGameProgress(next)
     const edge = INFLUENCES.find((item) => `${item.from}-${item.to}` === question.id)
-    setRevealed({ right, text: edge?.note ?? (right ? "Yes." : "No.") })
-    if (edge) setSelectedId(edge.to)
+    setRevealed({
+      right,
+      text: right ? `Yes. ${edge?.note ?? ""}` : `Not quite. ${edge?.note ?? ""}`,
+    })
   }
 
   return (
@@ -116,7 +111,7 @@ export function TreePage() {
       <LiteraryTabs />
       <h1 className="font-serif text-4xl">Family tree</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        {INFLUENCES.length} documented links. Click a name to light the line behind it and the line ahead of it. Score {progress.tree.correct} correct · {progress.tree.answered} answered, on this device.
+        {INFLUENCES.length} documented links. The gold line appears after you answer. Score {progress.tree.correct} correct, on this device.
       </p>
 
       {question ? (
@@ -139,7 +134,7 @@ export function TreePage() {
           </div>
           {revealed ? (
             <div className="mt-4 space-y-3">
-              <p className="text-sm">{revealed.right ? "Yes. " : "No. "}{revealed.text}</p>
+              <p className="text-sm">{revealed.text}</p>
               <Button
                 onClick={() => {
                   setRevealed(null)
@@ -154,7 +149,7 @@ export function TreePage() {
       ) : null}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
-        <div className="overflow-auto rounded-2xl border border-primary/20 bg-wine-dark shadow-elevated">
+        <div ref={boardRef} className="overflow-hidden rounded-2xl border border-primary/20 bg-wine-dark shadow-elevated">
           <div className="sticky top-0 z-10 flex gap-2 border-b border-cream/10 bg-wine-dark/90 px-3 py-2">
             <Button size="sm" variant="gold" onClick={() => setZoom((value) => Math.min(1.6, value + 0.15))}>
               Zoom in
@@ -166,38 +161,38 @@ export function TreePage() {
               Reset
             </Button>
           </div>
-          <svg width={width * zoom} height={height * zoom} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Literary family tree">
+          <svg width={width * fit * zoom} height={height * fit * zoom} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Literary family tree">
             <rect width={width} height={height} fill="hsl(350 48% 16%)" />
             {INFLUENCES.map((edge) => {
               const from = positions.get(edge.from)
               const to = positions.get(edge.to)
               if (!from || !to) return null
-              const hot = selectedId != null && lit.has(edge.from) && lit.has(edge.to) && (edge.from === selectedId || edge.to === selectedId || (ancestors.has(edge.from) && ancestors.has(edge.to)) || (descendants.has(edge.from) && descendants.has(edge.to)))
+              const hot = revealed != null && questionEdge?.from === edge.from && questionEdge.to === edge.to
               const midY = (from.y + to.y) / 2
               return (
                 <path
                   key={`${edge.from}-${edge.to}`}
                   d={`M ${from.x} ${from.y} C ${from.x} ${midY}, ${to.x} ${midY}, ${to.x} ${to.y}`}
                   fill="none"
-                  stroke={hot ? "hsl(42 70% 58%)" : "hsl(42 30% 45%)"}
-                  strokeWidth={hot ? 2.4 : 1}
-                  opacity={selectedId && !hot ? 0.25 : 0.9}
+                  stroke={hot ? "hsl(42 78% 62%)" : "hsl(40 35% 70%)"}
+                  strokeWidth={hot ? 2.6 : 1.3}
+                  opacity={revealed && !hot ? 0.45 : 0.95}
                 />
               )
             })}
             {[...positions.values()].map(({ author, x, y }) => {
-              const on = author.id === selectedId
-              const dim = selectedId != null && !lit.has(author.id)
+              const on = author.id === askedId
+              const dim = revealed != null && !lit.has(author.id)
               const lines = nameLines(author.name)
               return (
-                <g key={author.id} className="cursor-pointer" opacity={dim ? 0.35 : 1} onClick={() => setSelectedId(author.id)}>
+                <g key={author.id} opacity={dim ? 0.82 : 1}>
                   <title>{`${author.name}. ${author.life}`}</title>
                   <circle cx={x} cy={y} r={on ? 16 : 13} fill={on ? "hsl(42 70% 55%)" : "hsl(30 28% 92%)"} stroke="hsl(42 55% 48%)" strokeWidth={on ? 3 : 1.2} />
                   <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fontFamily="Georgia, serif" fill="hsl(350 45% 22%)">
                     {monogram(author.name)}
                   </text>
                   {lines.map((line, index) => (
-                    <text key={line} x={x} y={y + 28 + index * 13} textAnchor="middle" fontSize="11" fill="hsl(30 25% 96%)" fontFamily="Georgia, serif">
+                    <text key={line} x={x} y={y + 28 + index * 13} textAnchor="middle" fontSize="12" fill="hsl(36 45% 94%)" fontFamily="Georgia, serif">
                       {line}
                     </text>
                   ))}
@@ -207,32 +202,29 @@ export function TreePage() {
           </svg>
         </div>
         <aside className="rounded-2xl border border-border bg-card p-4">
-          {selected ? (
+          {asked ? (
             <>
-              <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">{selected.life}</p>
-              <h2 className="mt-1 font-serif text-2xl">{selected.name}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">{selected.bio}</p>
-              <ul className="mt-4 space-y-3">
-                {related.map((edge) => (
-                  <li key={`${edge.from}-${edge.to}`} className="text-sm">
-                    <p className="font-serif">
-                      {authorById(edge.from)?.name} → {authorById(edge.to)?.name}
-                    </p>
-                    <p className="text-muted-foreground">{edge.note}</p>
-                  </li>
-                ))}
-              </ul>
-              {worksByAuthor(selected.id)[0] ? (
-                <Link to={`/book/${worksByAuthor(selected.id)[0]?.textId ?? worksByAuthor(selected.id)[0]?.id}`} className="mt-4 inline-block text-sm text-primary">
+              <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">This question</p>
+              <h2 className="mt-1 font-serif text-2xl">{asked.name}</h2>
+              <p className="text-xs text-muted-foreground">{asked.life}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{asked.bio}</p>
+              {revealed && questionEdge ? (
+                <div className="mt-4 text-sm">
+                  <p className="font-serif">
+                    {authorById(questionEdge.from)?.name} → {authorById(questionEdge.to)?.name}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">{questionEdge.note}</p>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">The link stays hidden until you answer.</p>
+              )}
+              {worksByAuthor(asked.id)[0] ? (
+                <Link to={`/book/${worksByAuthor(asked.id)[0]?.textId ?? worksByAuthor(asked.id)[0]?.id}`} className="mt-4 inline-block text-sm text-primary">
                   Open a work
                 </Link>
-              ) : (
-                <p className="mt-4 text-xs text-muted-foreground">No separate work page. The link above is the reason this name is on the tree.</p>
-              )}
+              ) : null}
             </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Choose a name on the tree.</p>
-          )}
+          ) : null}
         </aside>
       </div>
     </main>
