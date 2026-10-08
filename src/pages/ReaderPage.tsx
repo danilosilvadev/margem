@@ -321,7 +321,13 @@ export function ReaderPage() {
                 Notes {countFor(commentEvents, paragraph.id) || ""}
               </button>
             </div>
-            <div className="grid gap-8" style={{ gridTemplateColumns: `repeat(${langs.length}, minmax(0, 1fr))` }}>
+            <div
+              className="grid gap-6"
+              style={{
+                gridTemplateColumns:
+                  narrow && app.settings.mobileMode === "stack" ? "minmax(0, 1fr)" : `repeat(${langs.length}, minmax(0, 1fr))`,
+              }}
+            >
               {langs.map((lang) => (
                 <div
                   key={lang}

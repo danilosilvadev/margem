@@ -71,10 +71,6 @@ await pageB.screenshot({ path: `${out}/comments-relay.png` })
 await pageB.click("[data-testid=comment-input]", { clickCount: 3 })
 await pageB.type("[data-testid=comment-input]", "And the Spanish keeps the same midnight.")
 await pageB.click("[data-testid=comment-submit]")
-await pageA.waitForFunction(
-  () => document.body.innerText.includes("And the Spanish keeps the same midnight."),
-  { timeout: 10000 },
-)
 await pageA.waitForFunction(() => document.body.innerText.includes("And the Spanish keeps the same midnight."), {
   timeout: 10000,
 })
@@ -88,18 +84,63 @@ const direct = await pageA
   })
   .then(() => true)
   .catch(() => false)
-check("direct peer link", direct, direct ? "" : "WebRTC did not open in this run")
-if (direct) {
-  await pageA.screenshot({ path: `${out}/comments-direct.png` })
+const directOnB = direct
+  ? await pageB
+      .waitForFunction(() => (document.querySelector("[data-testid=sync-status]")?.textContent ?? "").includes("direct"), {
+        timeout: 8000,
+      })
+      .then(() => true)
+      .catch(() => false)
+  : false
+check("direct peer link", direct && directOnB, direct && directOnB ? "" : "WebRTC did not open on both sessions")
+if (direct && directOnB) {
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  const note = `Sent on the direct link ${Date.now()}`
+  await pageA.type("[data-testid=comment-input]", note)
+  await pageA.click("[data-testid=comment-submit]")
+  const labeled = await pageB
+    .waitForFunction(
+      (text) =>
+        [...document.querySelectorAll("[data-testid=comment]")].some(
+          (node) => node.textContent.includes(text) && node.textContent.includes("Direct"),
+        ),
+      { timeout: 8000 },
+      note,
+    )
+    .then(() => true)
+    .catch(async () => {
+      const texts = await pageB.$$eval("[data-testid=comment]", (nodes) => nodes.map((node) => node.textContent?.replace(/\s+/g, " ").trim() ?? ""))
+      console.log("comment texts", texts.filter((text) => text.includes("direct link")))
+      return false
+    })
+  check("comment labeled direct", labeled)
+  await pageB.evaluate((text) => {
+    const node = [...document.querySelectorAll("[data-testid=comment]")].find(
+      (item) => item.textContent?.includes(text) && item.textContent?.includes("Direct"),
+    )
+    node?.scrollIntoView({ block: "center" })
+  }, note)
+  await pageB.screenshot({ path: `${out}/comments-direct.png` })
 }
 
+for (const page of [pageA, pageB]) {
+  await page.evaluate(() => {
+    const close = [...document.querySelectorAll("button")].find((node) => node.textContent?.trim() === "Close")
+    close?.click()
+  })
+}
+await pageA.waitForSelector("[data-testid=backup-prompt]", { timeout: 8000 })
+await pageA.screenshot({ path: `${out}/backup-prompt.png` })
+check("backup prompt", true)
 await pageA.evaluate(() => {
-  const close = [...document.querySelectorAll("button")].find((node) => node.textContent?.trim() === "Close")
-  close?.click()
+  const later = [...document.querySelectorAll("[data-testid=backup-prompt] button")].find((node) => node.textContent?.trim() === "Later")
+  later?.click()
 })
-await pageA.waitForSelector("[data-testid=comment]", { hidden: true }).catch(() => {})
+await pageA.waitForSelector("[data-testid=backup-prompt]", { hidden: true })
 await pageA.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true })
 await pageA.waitForFunction(() => document.body.innerText.includes("Stacked"))
+await new Promise((resolve) => setTimeout(resolve, 800))
+await pageA.evaluate(() => window.scrollTo(0, 0))
 await pageA.screenshot({ path: `${out}/reader-mobile.png`, fullPage: false })
 check("mobile stacked control", (await pageA.content()).includes("Stacked"))
 
@@ -108,6 +149,10 @@ await pageA.waitForSelector("[data-testid=last-backup]")
 const last = await pageA.$eval("[data-testid=last-backup]", (node) => node.textContent ?? "")
 check("last backup shown", last.includes("No backup yet") || last.length > 0, last)
 
+await pageA.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false })
+await pageA.goto(`${base}/settings`, { waitUntil: "networkidle0" })
+await pageA.waitForSelector("[data-testid=last-backup]")
+await pageA.screenshot({ path: `${out}/settings-backup.png` })
 await pageA.goto(`${base}/read/the-raven/poem`, { waitUntil: "networkidle0" })
 await pageA.evaluate(async () => {
   const ready = await navigator.serviceWorker.ready
