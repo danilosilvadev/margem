@@ -60,6 +60,21 @@ export function BookPage() {
       .finally(() => {
         if (!cancel) setReady(true)
       })
+    void cachedBook(bookId).then((cached) => {
+      if (!cancel) setOfflineReady(Boolean(cached))
+    })
+    void loadBook(bookId)
+      .then(() => {
+        if (!cancel) setOfflineReady(true)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancel = true
+    }
+  }, [bookId])
+
+  useEffect(() => {
+    let cancel = false
     void getShelf().then((items) => {
       if (!cancel) setOnShelf(items.some((item) => item.bookId === bookId))
     })
@@ -72,14 +87,6 @@ export function BookPage() {
         updatedAt: progress?.updatedAt ?? 0,
       })
     })
-    void cachedBook(bookId).then((cached) => {
-      if (!cancel) setOfflineReady(Boolean(cached))
-    })
-    void loadBook(bookId)
-      .then(() => {
-        if (!cancel) setOfflineReady(true)
-      })
-      .catch(() => undefined)
     return () => {
       cancel = true
     }
@@ -128,9 +135,7 @@ export function BookPage() {
   const relay =
     syncStatus === "open"
       ? "Relay connected. A note signed here can reach anyone else who has this book open."
-      : syncStatus === "connecting"
-        ? "Connecting. A note you sign is kept on this device either way."
-        : "Relay offline. A note you sign stays on this device until a relay answers."
+      : "Relay offline. A note you sign stays on this device until a relay answers."
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8" data-testid="book-profile">

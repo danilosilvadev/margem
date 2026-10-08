@@ -33,8 +33,7 @@ export function Shell() {
   const reading = useMatch("/read/:bookId/:chapterId")
   const { syncStatus, directPeers, promptBackup } = useApp()
   const [more, setMore] = useState(false)
-  const syncLabel =
-    syncStatus === "open" ? (directPeers > 0 ? `Relay · ${directPeers} direct` : "Relay connected") : syncStatus === "connecting" ? "Connecting" : "Relay offline"
+  const syncLabel = syncStatus === "open" ? (directPeers > 0 ? `Relay · ${directPeers} direct` : "Relay connected") : "Relay offline"
   return (
     <div className="min-h-screen bg-background text-foreground">
       {reading ? null : (

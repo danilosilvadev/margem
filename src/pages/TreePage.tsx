@@ -33,11 +33,15 @@ const BORN: Record<string, number> = {
   kafka: 1883,
 }
 
-const COLS = 6
-const COL_W = 168
-const ROW_H = 124
-const PAD_X = 110
-const PAD_Y = 48
+const COL_W = 210
+const PAD_X = 96
+const PAD_Y = 56
+
+function columnsFor(px: number): number {
+  if (px < 560) return 2
+  if (px < 980) return 3
+  return 4
+}
 
 function monogram(name: string): string {
   const skip = new Set(["de", "von", "of", "the"])
@@ -47,8 +51,9 @@ function monogram(name: string): string {
 }
 
 function nameLines(name: string): string[] {
-  if (name.length <= 18) return [name]
+  if (name.length <= 14) return [name]
   const words = name.split(" ")
+  if (words.length === 1) return [name]
   const mid = Math.ceil(words.length / 2)
   return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")]
 }
@@ -61,24 +66,27 @@ export function TreePage() {
   const [zoom, setZoom] = useState(1)
   const boardRef = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(1)
+  const [cols, setCols] = useState(4)
   const question = questions[cursor % Math.max(questions.length, 1)]
   const askedId = question?.subjectId ?? null
   const people = useMemo(
     () => [...AUTHORS].sort((a, b) => (BORN[a.id] ?? 3000) - (BORN[b.id] ?? 3000) || a.name.localeCompare(b.name)),
     [],
   )
+  const nameSize = 13 / Math.max(fit, 0.45)
+  const rowH = 48 + nameSize * 3.1
   const positions = useMemo(() => {
     const map = new Map<string, { author: Author; x: number; y: number }>()
     people.forEach((author, index) => {
-      const col = index % COLS
-      const row = Math.floor(index / COLS)
-      map.set(author.id, { author, x: PAD_X + col * COL_W + COL_W / 2, y: PAD_Y + row * ROW_H + 28 })
+      const col = index % cols
+      const row = Math.floor(index / cols)
+      map.set(author.id, { author, x: PAD_X + col * COL_W + COL_W / 2, y: PAD_Y + row * rowH + 28 })
     })
     return map
-  }, [people])
-  const rows = Math.ceil(people.length / COLS)
-  const width = PAD_X * 2 + COLS * COL_W
-  const height = PAD_Y * 2 + rows * ROW_H
+  }, [people, cols, rowH])
+  const rows = Math.ceil(people.length / cols)
+  const width = PAD_X * 2 + cols * COL_W
+  const height = PAD_Y * 2 + rows * rowH
   const asked = askedId ? authorById(askedId) : undefined
   const questionEdge = INFLUENCES.find((edge) => `${edge.from}-${edge.to}` === question?.id)
   const lit = revealed && questionEdge ? new Set([questionEdge.from, questionEdge.to]) : new Set<string>()
@@ -86,12 +94,17 @@ export function TreePage() {
   useEffect(() => {
     const el = boardRef.current
     if (!el) return
-    const apply = () => setFit(el.clientWidth / width)
+    const apply = () => {
+      const nextCols = columnsFor(el.clientWidth)
+      const boardW = PAD_X * 2 + nextCols * COL_W
+      setCols(nextCols)
+      setFit(el.clientWidth / boardW)
+    }
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [width])
+  }, [])
 
   function answer(guess: string) {
     if (!question || revealed) return
@@ -175,7 +188,7 @@ export function TreePage() {
                   d={`M ${from.x} ${from.y} C ${from.x} ${midY}, ${to.x} ${midY}, ${to.x} ${to.y}`}
                   fill="none"
                   stroke={hot ? "hsl(42 78% 62%)" : "hsl(40 35% 70%)"}
-                  strokeWidth={hot ? 2.6 : 1.3}
+                  strokeWidth={hot ? 4 : 1.8}
                   opacity={revealed && !hot ? 0.45 : 0.95}
                 />
               )
@@ -192,7 +205,7 @@ export function TreePage() {
                     {monogram(author.name)}
                   </text>
                   {lines.map((line, index) => (
-                    <text key={line} x={x} y={y + 28 + index * 13} textAnchor="middle" fontSize="12" fill="hsl(36 45% 94%)" fontFamily="Georgia, serif">
+                    <text key={line} x={x} y={y + nameSize * 1.8 + index * nameSize * 1.25} textAnchor="middle" fontSize={nameSize} fill="hsl(36 55% 96%)" fontFamily="Georgia, serif">
                       {line}
                     </text>
                   ))}
