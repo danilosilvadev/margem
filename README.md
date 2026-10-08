@@ -35,6 +35,8 @@ Open the site, then Settings if you want a display name. To try two readers in o
 | Sync | A tiny WebSocket relay, plus WebRTC when two readers of the same book are both online | The relay is one Node process and one JSONL file. It checks signatures, stores events, and fans them out by book and chapter. It also forwards WebRTC signaling. Direct links are a bonus path. The relay remains the copy that is there when the other person has closed the tab. |
 | Offline | Service worker (vite-plugin-pwa) | The shell, fonts, and catalog are precached. Each book is fetched when opened and then kept by the Cache API and IndexedDB. |
 
+The reader shows “You are offline” when the browser fires `offline`, or when a request to `/__reachability` fails. That path is not precached, so a CacheFirst worker cannot answer it from the book cache. Chromium can leave `navigator.onLine` true while requests are blocked; the probe is what the banner follows in that case. A book already on the device still opens.
+
 Tradeoff worth sitting with: this relay is not a public Nostr relay. A reader cannot point a generic Nostr client at it. In return, Dan runs one process, filters are just book and chapter, and the moderator key is the key that process generated.
 
 ## What a reader can do

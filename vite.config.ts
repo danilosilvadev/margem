@@ -34,6 +34,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/__reachability/],
         globPatterns: ["**/*.{js,css,html,svg,woff2,png,json,ico}"],
         globIgnores: ["**/books/**"],
         runtimeCaching: [

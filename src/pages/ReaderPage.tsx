@@ -13,6 +13,7 @@ import {
   type StoredEvent,
 } from "@/lib/db"
 import { loadBook } from "@/lib/catalog"
+import { isReachable, probeReachability, subscribeReachability } from "@/lib/reachability"
 import { useApp, useChapterThread } from "@/state/AppProvider"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -30,7 +31,7 @@ export function ReaderPage() {
   watchRef.current = app.watchChapter
   const [book, setBook] = useState<Book | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [offline, setOffline] = useState(!navigator.onLine)
+  const [offline, setOffline] = useState(!isReachable())
   const [marks, setMarks] = useState<string[]>([])
   const [highlights, setHighlights] = useState<Awaited<ReturnType<typeof highlightsFor>>>([])
   const [popover, setPopover] = useState<Popover | null>(null)
@@ -42,11 +43,13 @@ export function ReaderPage() {
 
   useEffect(() => watchRef.current(bookId, chapterId), [bookId, chapterId])
 
+  useEffect(() => subscribeReachability((next) => setOffline(!next)), [])
+
   useEffect(() => {
     let cancel = false
     setError(null)
-    void loadBook(bookId)
-      .then((next) => {
+    void Promise.all([loadBook(bookId), probeReachability()])
+      .then(([next]) => {
         if (cancel) return
         setBook(next)
         document.title = `${next.title.en} · ${brand.name}`
@@ -71,17 +74,6 @@ export function ReaderPage() {
       cancel = true
     }
   }, [bookId, chapterId, app.tick])
-
-  useEffect(() => {
-    const on = () => setOffline(true)
-    const off = () => setOffline(false)
-    window.addEventListener("offline", on)
-    window.addEventListener("online", off)
-    return () => {
-      window.removeEventListener("offline", on)
-      window.removeEventListener("online", off)
-    }
-  }, [])
 
   const chapter = book?.chapters.find((item) => item.id === chapterId) ?? book?.chapters[0]
   const chapterIndex = book && chapter ? book.chapters.findIndex((item) => item.id === chapter.id) : -1
@@ -268,7 +260,9 @@ export function ReaderPage() {
       </header>
 
       {offline ? (
-        <p className="bg-accent-soft px-4 py-2 text-center text-sm">You are offline. This copy stays readable. New notes wait on this device.</p>
+        <p className="bg-accent-soft px-4 py-2 text-center text-sm" data-testid="offline-banner">
+          You are offline. This copy stays readable. New notes wait on this device.
+        </p>
       ) : null}
 
       <article
