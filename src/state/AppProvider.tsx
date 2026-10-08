@@ -60,6 +60,7 @@ type AppValue = {
     replyTo?: string
   }) => Promise<void>
   deleteComment: (target: SignedEvent) => Promise<void>
+  publishCommunity: (input: { kind: number; tags: string[][]; content: string; anonymous?: boolean }) => Promise<void>
   refresh: () => void
 }
 
@@ -115,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!settings) return
     document.documentElement.dataset.theme = settings.theme
-    const themeColor = settings.theme === "dark" ? "#171410" : settings.theme === "sepia" ? "#f1e0c4" : "#f4efe6"
+    const themeColor = settings.theme === "dark" ? "#1c1412" : settings.theme === "sepia" ? "#ead7b8" : "#4d1925"
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColor)
   }, [settings])
 
@@ -175,12 +176,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
             chapter: chapter.chapterId,
           })
         }
+        client.subscribe("community", {
+          kinds: [KIND.readingRoom, KIND.salonPost, KIND.marginalia, KIND.letter],
+        })
       },
     })
     clientRef.current = client
     client.connect(settings.relayUrl, identity.publicKey, stun || null)
     client.subscribe("policy", { kinds: [KIND.blocklist] })
     client.subscribe("profiles", { kinds: [KIND.profile] })
+    client.subscribe("community", {
+      kinds: [KIND.readingRoom, KIND.salonPost, KIND.marginalia, KIND.letter],
+    })
     return () => {
       client.close()
       clientRef.current = null
@@ -323,6 +330,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [identity, publishSigned],
   )
 
+  const publishCommunity = useCallback(
+    async (input: { kind: number; tags: string[][]; content: string; anonymous?: boolean }) => {
+      const who = input.anonymous ? await createIdentity() : identity
+      if (!who) return
+      const event = await signEvent(
+        {
+          pubkey: who.publicKey,
+          created_at: Math.floor(Date.now() / 1000),
+          kind: input.kind,
+          tags: input.tags,
+          content: input.content,
+        },
+        who.secretKey,
+      )
+      await publishSigned(event)
+    },
+    [identity, publishSigned],
+  )
+
   const deleteComment = useCallback(
     async (target: SignedEvent) => {
       if (!identity || target.pubkey !== identity.publicKey) return
@@ -377,6 +403,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       watchChapter,
       publishComment,
       deleteComment,
+      publishCommunity,
       refresh,
     }
   }, [
@@ -405,6 +432,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     watchChapter,
     publishComment,
     deleteComment,
+    publishCommunity,
     refresh,
   ])
 

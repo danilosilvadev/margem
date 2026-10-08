@@ -210,7 +210,7 @@ export async function startRelay(opts?: {
           return
         }
         state.events.push(now)
-        if (!event || event.pubkey !== state.pubkey) {
+        if (!event || (event.pubkey !== state.pubkey && event.kind !== KIND.letter)) {
           send(ws, { op: "ok", id: event?.id ?? "", accepted: false, reason: "Event key does not match this connection" })
           return
         }

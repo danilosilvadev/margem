@@ -1,9 +1,16 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 import { Shell } from "@/components/Shell"
 import { BookPage } from "@/pages/BookPage"
+import { CommunityPage } from "@/pages/CommunityPage"
+import { JourneyPage } from "@/pages/JourneyPage"
 import { LibraryPage } from "@/pages/LibraryPage"
+import { MapPage } from "@/pages/MapPage"
+import { OpeningsPage } from "@/pages/OpeningsPage"
 import { ReaderPage } from "@/pages/ReaderPage"
+import { SalonPage } from "@/pages/SalonPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { ShelfPage } from "@/pages/ShelfPage"
+import { TreePage } from "@/pages/TreePage"
 import { AppProvider } from "@/state/AppProvider"
 
 export function App() {
@@ -15,6 +22,13 @@ export function App() {
             <Route path="/" element={<LibraryPage />} />
             <Route path="/book/:bookId" element={<BookPage />} />
             <Route path="/read/:bookId/:chapterId" element={<ReaderPage />} />
+            <Route path="/shelf" element={<ShelfPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/journey" element={<JourneyPage />} />
+            <Route path="/tree" element={<TreePage />} />
+            <Route path="/openings" element={<OpeningsPage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/salon/:salonId" element={<SalonPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Missing />} />
           </Route>

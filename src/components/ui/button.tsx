@@ -4,13 +4,14 @@ import type { ButtonHTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default: "bg-accent text-paper hover:opacity-90",
-        quiet: "bg-transparent text-ink hover:bg-accent-soft",
-        line: "border border-line bg-paper-2 text-ink hover:border-accent",
+        default: "bg-primary text-primary-foreground shadow-soft hover:bg-wine-dark",
+        quiet: "bg-transparent text-foreground hover:bg-secondary",
+        line: "border border-border bg-card text-foreground hover:border-primary",
+        gold: "bg-gold text-wine-dark hover:bg-gold-light",
       },
       size: {
         default: "h-10",

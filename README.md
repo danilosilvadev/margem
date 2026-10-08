@@ -39,6 +39,16 @@ The reader shows “You are offline” when the browser fires `offline`, or when
 
 Tradeoff worth sitting with: this relay is not a public Nostr relay. A reader cannot point a generic Nostr client at it. In return, Dan runs one process, filters are just book and chapter, and the moderator key is the key that process generated.
 
+## The look, and the pages around the reader
+
+The palette is the one from O Cenáculo: wine, cream, gold, Playfair Display for titles, DM Sans for the rest. Both fonts are self-hosted so the installed app still opens offline. Light, sepia, and dark still switch the same tokens.
+
+Explore is the front page. The shelf is this browser’s own progress, marks, and quotes. The map, the journey, the family tree, and the opening-lines game are scored on this device (`localStorage`, key `margem-games`). The facts they use live in [`shared/canon.ts`](shared/canon.ts) and are explained in [content/CANON.md](content/CANON.md). Only The Raven has a parallel text. The other works are metadata, with the public-domain note written on each one.
+
+Community is signed events, not an account. Reading rooms, salon threads, and marginalia use the reading key. A letter uses a one-time key that this browser does not keep. The relay accepts that mismatch only for letters, and still checks the signature. The owner’s blocklist hides a key or a single event everywhere, including there. “Trending this week” counts events already synced to this browser.
+
+Left in O Cenáculo, and not brought over: accounts, payments, the store, cohorts with mentors, the calendar of a class, and the professor, mentor, and admin desks.
+
 ## What a reader can do
 
 - Library and a book page, with the public-domain note for each language.
@@ -112,7 +122,7 @@ IndexedDB stores the records, not the gzip. Plan on about the JSON size, plus a 
 | Typical | 10 × this poem | 1,000 | 0.8 MB |
 | Heavy | 100 × this poem | 100,000 | 56 MB |
 
-A novel is a different book size: roughly the plain text of each language, plus JSON. Comments do not grow with the book. Fifty-six megabytes is still a small fraction of the quotas below. The app shell and self-hosted fonts precache to about 955 KiB. The book file is not in that precache; it downloads the first time someone opens it.
+A novel is a different book size: roughly the plain text of each language, plus JSON. Comments do not grow with the book. Fifty-six megabytes is still a small fraction of the quotas below. The app shell and self-hosted fonts precache to about 751 KiB. The book file is not in that precache; it downloads the first time someone opens it.
 
 Quotas and eviction, from [MDN “Storage quotas and eviction criteria”](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria) and the [WebKit storage policy notes](https://webkit.org/blog/14403/updates-to-storage-policy/) (checked October 2026):
 

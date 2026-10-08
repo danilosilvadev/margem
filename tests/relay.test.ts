@@ -187,4 +187,55 @@ describe("relay", () => {
     client.close()
     await rm(dir, { recursive: true, force: true })
   })
+
+  it("accepts a letter from a one-time key and refuses a comment from that key", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "margem-relay-"))
+    const relay = await startRelay({ port: 0, adminPort: 0, dataDir: dir })
+    relays.push(relay)
+    const reader = await createIdentity()
+    const ghost = await createIdentity()
+    const oks: { id: string; accepted: boolean; reason?: string }[] = []
+    let open = false
+    const client = new RelayClient({
+      onStatus: (status) => {
+        open = status === "open"
+      },
+      onOwner: () => undefined,
+      onPeers: () => undefined,
+      onDirect: () => undefined,
+      onEvent: () => undefined,
+      onEose: () => undefined,
+      onOk: (id, accepted, reason) => oks.push({ id, accepted, reason }),
+      onOpen: () => undefined,
+    })
+    client.connect(relay.url, reader.publicKey, null)
+    await waitFor(() => open, "reader connected")
+    const letter = await signEvent(
+      {
+        pubkey: ghost.publicKey,
+        created_at: Math.floor(Date.now() / 1000),
+        kind: KIND.letter,
+        tags: [],
+        content: JSON.stringify({ body: "Left on the table." }),
+      },
+      ghost.secretKey,
+    )
+    const comment = await signEvent(
+      {
+        pubkey: ghost.publicKey,
+        created_at: Math.floor(Date.now() / 1000),
+        kind: KIND.comment,
+        tags: [["b", "the-raven"], ["c", "poem"]],
+        content: "Not from this connection.",
+      },
+      ghost.secretKey,
+    )
+    client.publish(letter)
+    client.publish(comment)
+    await waitFor(() => oks.length >= 2, "both answers")
+    expect(oks.find((item) => item.id === letter.id)?.accepted).toBe(true)
+    expect(oks.find((item) => item.id === comment.id)?.accepted).toBe(false)
+    client.close()
+    await rm(dir, { recursive: true, force: true })
+  })
 })

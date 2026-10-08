@@ -256,7 +256,7 @@ export async function putStoredEvent(
   }
   await db.put("events", stored)
   if (!existing) {
-    if (event.kind === 1 || event.kind === 5) await bump(db)
+    if (event.kind === 1 || event.kind === 5 || event.kind === 30010 || event.kind === 30011 || event.kind === 30012 || event.kind === 30013) await bump(db)
     return "new"
   }
   return "updated"

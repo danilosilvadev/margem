@@ -1,51 +1,148 @@
 @import "tailwindcss";
 
+/* O Cenáculo palette, expressed for Tailwind v4. Wine, cream, gold, Playfair, DM Sans. */
 @theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted-foreground));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--wine));
+  --color-accent-foreground: hsl(var(--primary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-wine: hsl(var(--wine));
+  --color-wine-light: hsl(var(--wine-light));
+  --color-wine-dark: hsl(var(--wine-dark));
+  --color-cream: hsl(var(--cream));
+  --color-cream-dark: hsl(var(--cream-dark));
+  --color-gold: hsl(var(--gold));
+  --color-gold-light: hsl(var(--gold-light));
+  --color-parchment: hsl(var(--parchment));
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
   --color-ink: var(--ink);
-  --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-highlight: var(--highlight);
-  --font-serif: "Literata Variable", "Iowan Old Style", Palatino, Georgia, serif;
-  --font-sans: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display Variable", Georgia, serif;
+  --font-sans: "DM Sans Variable", system-ui, sans-serif;
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --shadow-soft: var(--elev-soft);
+  --shadow-elevated: var(--elev-raised);
+  --shadow-glow: var(--elev-glow);
 }
 
 :root {
-  --paper: #f4efe6;
-  --paper-2: #fbf7f0;
-  --ink: #261f19;
-  --muted: #6f655a;
-  --line: #e3d8c8;
-  --accent: #8a3a45;
-  --accent-soft: #f3e1e3;
-  --highlight: #f3d48a;
+  --background: 30 25% 97%;
+  --foreground: 20 15% 15%;
+  --card: 30 20% 99%;
+  --card-foreground: 20 15% 15%;
+  --popover: 30 20% 99%;
+  --popover-foreground: 20 15% 15%;
+  --primary: 350 45% 30%;
+  --primary-foreground: 30 25% 97%;
+  --secondary: 35 30% 90%;
+  --secondary-foreground: 20 15% 15%;
+  --muted: 30 15% 92%;
+  --muted-foreground: 20 10% 45%;
+  --destructive: 0 84% 60%;
+  --border: 30 15% 88%;
+  --input: 30 15% 88%;
+  --ring: 350 45% 30%;
+  --radius: 0.75rem;
+  --wine: 350 45% 30%;
+  --wine-light: 350 40% 45%;
+  --wine-dark: 350 50% 20%;
+  --cream: 30 25% 97%;
+  --cream-dark: 30 20% 92%;
+  --gold: 42 70% 55%;
+  --gold-light: 42 65% 70%;
+  --parchment: 35 30% 94%;
+  --gradient-hero: linear-gradient(135deg, hsl(var(--wine)) 0%, hsl(var(--wine-dark)) 100%);
+  --elev-soft: 0 4px 20px -4px hsl(var(--wine) / 0.1);
+  --elev-raised: 0 10px 40px -10px hsl(var(--wine) / 0.15);
+  --elev-glow: 0 0 30px hsl(var(--gold) / 0.3);
+  --paper: hsl(var(--cream));
+  --paper-2: hsl(var(--card));
+  --ink: hsl(var(--foreground));
+  --line: hsl(var(--border));
+  --accent-soft: hsl(350 42% 94%);
+  --highlight: hsl(42 80% 72%);
   color-scheme: light;
 }
 
 :root[data-theme="sepia"] {
-  --paper: #f1e0c4;
-  --paper-2: #f7ead2;
-  --ink: #3a2a1c;
-  --muted: #7a6248;
-  --line: #e2ccaa;
-  --accent: #7a3e22;
-  --accent-soft: #edd3bc;
-  --highlight: #efc56a;
+  --background: 35 42% 90%;
+  --foreground: 25 30% 18%;
+  --card: 36 40% 93%;
+  --card-foreground: 25 30% 18%;
+  --primary: 18 45% 32%;
+  --primary-foreground: 40 40% 96%;
+  --secondary: 34 32% 84%;
+  --secondary-foreground: 25 30% 18%;
+  --muted: 34 28% 86%;
+  --muted-foreground: 25 18% 38%;
+  --border: 32 24% 78%;
+  --input: 32 24% 78%;
+  --wine: 18 45% 32%;
+  --wine-light: 18 40% 42%;
+  --wine-dark: 18 48% 22%;
+  --cream: 35 42% 90%;
+  --cream-dark: 34 32% 84%;
+  --gold: 36 62% 46%;
+  --gold-light: 38 70% 62%;
+  --parchment: 36 36% 86%;
+  --paper: hsl(var(--cream));
+  --paper-2: hsl(var(--card));
+  --ink: hsl(var(--foreground));
+  --line: hsl(var(--border));
+  --accent-soft: hsl(28 40% 82%);
+  --highlight: hsl(40 75% 62%);
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --paper: #171410;
-  --paper-2: #221e19;
-  --ink: #f3eadc;
-  --muted: #b4a694;
-  --line: #3a332c;
-  --accent: #e7b7bc;
-  --accent-soft: #3a2a2d;
-  --highlight: #6d5424;
+  --background: 20 15% 10%;
+  --foreground: 30 20% 95%;
+  --card: 20 15% 12%;
+  --card-foreground: 30 20% 95%;
+  --popover: 20 15% 12%;
+  --popover-foreground: 30 20% 95%;
+  --primary: 350 40% 50%;
+  --primary-foreground: 20 15% 10%;
+  --secondary: 20 12% 18%;
+  --secondary-foreground: 30 20% 95%;
+  --muted: 20 12% 18%;
+  --muted-foreground: 30 15% 65%;
+  --border: 20 12% 20%;
+  --input: 20 12% 20%;
+  --ring: 350 40% 50%;
+  --wine: 350 40% 50%;
+  --wine-light: 350 35% 62%;
+  --wine-dark: 350 45% 28%;
+  --cream: 30 15% 90%;
+  --cream-dark: 30 12% 80%;
+  --gold: 42 65% 55%;
+  --gold-light: 42 60% 68%;
+  --parchment: 30 12% 15%;
+  --paper: hsl(var(--background));
+  --paper-2: hsl(var(--card));
+  --ink: hsl(var(--foreground));
+  --line: hsl(var(--border));
+  --accent-soft: hsl(350 20% 18%);
+  --highlight: hsl(42 40% 32%);
   color-scheme: dark;
 }
 
@@ -57,12 +154,21 @@ body,
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
 }
 
 ::selection {
@@ -74,7 +180,6 @@ body {
   font-family: var(--font-serif);
   font-weight: 460;
   line-height: 1.55;
-  letter-spacing: -0.011em;
 }
 
 button,
@@ -84,7 +189,21 @@ select {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+.bg-hero {
+  background: var(--gradient-hero);
+}
+
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }

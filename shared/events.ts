@@ -7,6 +7,10 @@ export const KIND = {
   comment: 1,
   delete: 5,
   blocklist: 30001,
+  readingRoom: 30010,
+  salonPost: 30011,
+  marginalia: 30012,
+  letter: 30013,
 } as const
 
 export type Kind = (typeof KIND)[keyof typeof KIND]
